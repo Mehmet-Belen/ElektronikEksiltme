@@ -8,8 +8,7 @@
     <title>@ViewData["Title"] - WebApplication1</title>
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
-    <li
-nk rel="stylesheet" href="~/WebApplication1.styles.css" asp-append-version="true" />
+    <li nk rel="stylesheet" href="~/WebApplication1.styles.css" asp-append-version="true" />
 </head>
 
 <body>
@@ -17,10 +16,11 @@ nk rel="stylesheet" href="~/WebApplication1.styles.css" asp-append-version="true
         <nav class="navbar navbar-expand-sm navbar-toggleable-sm navbar-light bg-light border-bottom box-shadow mb-3">
             <div class="container">
                 <a class="navbar-brand d-flex align-items-center" asp-area="" asp-page="/Index"></a>
-                    <img src="~/images/kik-logo.jpg" alt="KIK Logo" style="height:32px; margin-right:8px;" />
-                    <img src="~/images/ekap-logo.jpg" alt="EKAP Logo" style="height:32px; margin-right:8px;" />
-                      </button class="navbar-t             aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Menüyü Aç/Kapat">
-                    <span class="navbar-toggler-icon"></span>
+                <img src="~/images/kik-logo.jpg" alt="KIK Logo" style="height:32px; margin-right:8px;" />
+                <img src="~/images/ekap-logo.jpg" alt="EKAP Logo" style="height:32px; margin-right:8px;" />
+                </button class="navbar-t             aria-controls=" navbarSupportedContent" aria-expanded="false"
+                    aria-label="Menüyü Aç/Kapat">
+                <span class="navbar-toggler-icon"></span>
                 </button>
                 <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
                     <ul class="navbar-nav flex-grow-1">
@@ -36,6 +36,9 @@ nk rel="stylesheet" href="~/WebApplication1.styles.css" asp-append-version="true
                         <li class="nav-item">
                             <a class="nav-link text-dark" asp-area="" asp-page="/ElektronikEksiltme">Elektronik Eksiltme
                                 Teklif İşlemleri</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link text-dark" asp-area="" asp-page="/Login">Giriş</a>
                         </li>
                     </ul>
                 </div>
@@ -55,12 +58,12 @@ nk rel="stylesheet" href="~/WebApplication1.styles.css" asp-append-version="true
     </footer>
 
 
-    <sc
-ript src="~/lib/jquery/dist/jquery.min.js"></script>
-    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="~/js/site.js" asp-append-version="true"></script>
+    <sc ript src="~/lib/jquery/dist/jquery.min.js">
+        </script>
+        <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+        <script src="~/js/site.js" asp-append-version="true"></script>
 
-    @await RenderSectionAsync("Scripts", required: false)
+        @await RenderSectionAsync("Scripts", required: false)
 </body>
 
 </html>

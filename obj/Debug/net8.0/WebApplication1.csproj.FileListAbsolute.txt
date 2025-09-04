@@ -30,3 +30,4 @@ C:\Users\mehme\source\repos\Deneme1_NETCoreRazor\WebApplication1\WebApplication1
 C:\Users\mehme\source\repos\Deneme1_NETCoreRazor\WebApplication1\WebApplication1\obj\Debug\net8.0\WebApplication1.pdb
 C:\Users\mehme\source\repos\Deneme1_NETCoreRazor\WebApplication1\WebApplication1\obj\Debug\net8.0\WebApplication1.genruntimeconfig.cache
 C:\Users\mehme\source\repos\Deneme1_NETCoreRazor\WebApplication1\WebApplication1\obj\Debug\net8.0\ref\WebApplication1.dll
+C:\Users\mehme\source\repos\Deneme1_NETCoreRazor\WebApplication1\WebApplication1\obj\Debug\net8.0\WebApplication1.sourcelink.json
