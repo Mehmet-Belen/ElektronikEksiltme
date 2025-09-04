@@ -1,0 +1,80 @@
+@page
+@model ElektronikEksiltmeModel
+@{
+    ViewData["Title"] = "Elektronik Eksiltme Teklif İşlemleri";
+}   
+
+<h1>@ViewData["Title"]</h1>
+
+<div class="ee-container">
+    <div class="search-panel">
+        <h2>Elektronik eksiltme listesi arama</h2>
+        <form method="get" class="ee-form">
+            <div class="ee-form-row">
+                <input type="text" name="q" value="@Model.Query" placeholder="Arama terimi" />
+                <button type="submit">Detaylı Arama</button>
+                <button type="button">Seçiniz</button>
+            </div>
+            <div class="ee-status-filters">
+                <label><input type="checkbox" name="started" value="true" @(Model.FilterStarted ? "checked" : null) /> Elektronik eksiltme başladı</label>
+                <label><input type="checkbox" name="ended" value="true" @(Model.FilterEnded ? "checked" : null) /> Elektronik eksiltme bitti</label>
+                <label><input type="checkbox" name="completed" value="true" @(Model.FilterCompleted ? "checked" : null) /> Elektronik eksiltme tamamlandı</label>
+            </div>
+        </form>
+    </div>
+
+    <div class="results-panel">
+        <table class="ee-table">
+            <thead>
+                <tr>
+                    <th>İhale Kayıt Numarası</th>
+                    <th>Kısım Adı</th>
+                    <th>Oturum Tarih/Saat</th>
+                    <th>Eksiltme Durumu</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (Model.FilteredItems.Count == 0)
+                {
+                    <tr>
+                        <td colspan="5" style="text-align:center;">Kayıt bulunamadı</td>
+                    </tr>
+                }
+                else
+                {
+                    foreach (var item in Model.FilteredItems)
+                    {
+                        <tr>
+                            <td>@item.IKN</td>
+                            <td>@item.PartName</td>
+                            <td>@item.SessionDateTime.ToString("dd.MM.yyyy HH:mm")</td>
+                            <td>@item.StatusText</td>
+                            <td><a class="ee-btn" asp-page="/ElektronikEksiltmeOturum" asp-route-ikn="@item.IKN">Oturuma Katıl</a></td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<style>
+.ee-container { max-width: 1100px; margin: 0 auto; display: grid; gap: 16px; }
+.search-panel { border: 1px solid #ddd; border-radius: 6px; padding: 16px; background: #fafafa; }
+.search-panel h2 { margin-top: 0; font-size: 1.1rem; }
+.ee-form { display: flex; flex-direction: column; gap: 12px; }
+.ee-form-row { display: flex; gap: 8px; }
+.ee-form-row input[type="text"] { flex: 1; padding: 8px; border: 1px solid #ccc; border-radius: 4px; }
+.ee-form-row button { padding: 8px 12px; border: 1px solid #ccc; background: #fff; border-radius: 4px; cursor: pointer; }
+.ee-status-filters { display: flex; gap: 16px; flex-wrap: wrap; }
+.ee-status-filters label { display: flex; align-items: center; gap: 6px; }
+.results-panel { border: 1px solid #ddd; border-radius: 6px; padding: 0; background: #fff; }
+.ee-table { width: 100%; border-collapse: collapse; }
+.ee-table th, .ee-table td { border-bottom: 1px solid #eee; padding: 10px; text-align: left; }
+.ee-table thead th { background: #f3f4f6; font-weight: 600; }
+.ee-btn { display: inline-block; padding: 6px 12px; background: #0d6efd; color: #fff; text-decoration: none; border-radius: 4px; }
+.ee-btn:hover { background: #0b5ed7; }
+</style>
+
+

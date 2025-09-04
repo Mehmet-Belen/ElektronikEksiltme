@@ -1,0 +1,274 @@
+@page "{ikn?}"
+@model ElektronikEksiltmeCanliModel
+@{
+    ViewData["Title"] = "Elektronik Eksiltme - Canlı Oturum";
+}
+
+<h1>@ViewData["Title"]</h1>
+
+<div class="canli-container">
+    <section class="ihale-bilgi">
+        <h2>İhale Bilgileri</h2>
+        <div class="grid">
+            <div>
+                <div class="label">İhale Kayıt No</div>
+                <div class="value">@Model.Ihale.IKN</div>
+            </div>
+            <div>
+                <div class="label">İdare Adı</div>
+                <div class="value">@Model.Ihale.AuthorityName</div>
+            </div>
+            <div>
+                <div class="label">İhale Adı</div>
+                <div class="value">@Model.Ihale.TenderName</div>
+            </div>
+            <div>
+                <div class="label">Kısım Adı</div>
+                <div class="value">@Model.Ihale.PartName</div>
+            </div>
+        </div>
+    </section>
+
+    <section class="timers-rank">
+        <div class="timers">
+            <div class="timer-card">
+                <div class="timer-title">Turun Bitişine Kalan</div>
+                <div id="round-timer" class="timer-value">00:00</div>
+                <div class="timer-sub">Bitiş: @Model.RoundEnd:dd.MM.yyyy HH:mm</div>
+            </div>
+            <div class="timer-card">
+                <div class="timer-title">Eksiltmenin Bitişine Kalan</div>
+                <div id="tender-timer" class="timer-value">00:00</div>
+                <div class="timer-sub">Bitiş: @Model.TenderEnd:dd.MM.yyyy HH:mm</div>
+            </div>
+        </div>
+        <div class="rank-badge">
+            <span class="rank-number">@Model.CurrentRank</span>
+            <span class="rank-label">Sıralamanız</span>
+        </div>
+    </section>
+
+    <form method="post">
+        <section class="items">
+            <h2>Kalemlere İlişkin Teklif Bilgileri</h2>
+            <table class="items-table">
+                <thead>
+                    <tr>
+                        <th>Kalem Adı</th>
+                        <th>Menşei</th>
+                        <th>Miktarı</th>
+                        <th>Birimi</th>
+                        <th>Önceki Birim Fiyatı</th>
+                        <th>Birim Tekrar Fiyatı</th>
+                        <th>Kalem Toplam Fiyatı</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @for (int i = 0; i < Model.Items.Count; i++)
+                    {
+                        <tr>
+                            <td>@Model.Items[i].ItemName</td>
+                            <td>@Model.Items[i].Origin</td>
+                            <td>@Model.Items[i].Quantity</td>
+                            <td>@Model.Items[i].Unit</td>
+                            <td>@Model.Items[i].PreviousUnitPrice.ToString("N2") ₺</td>
+                            <td>
+                                <input type="number" step="0.01" min="0" name="Items[@i].ReOfferUnitPrice"
+                                    value="@Model.Items[i].ReOfferUnitPrice" class="input-price" data-index="@i" /> ₺
+                            </td>
+                            <td class="line-total" data-index="@i">@Model.Items[i].LineTotal.ToString("N2") ₺</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </section>
+
+        <section class="totals">
+            <div class="totals-box">
+                <div>
+                    Toplam Teklif Tutarı: <strong id="grand-total">@Model.GrandTotal.ToString("N2") ₺</strong>
+                </div>
+                <div>
+                    Eksiltme Tutarı: <strong id="decrement-total">@Model.DecrementTotal.ToString("N2") ₺</strong>
+                </div>
+            </div>
+            <div>
+                <button type="submit" class="submit-btn">Teklifi Güncelle</button>
+            </div>
+        </section>
+    </form>
+</div>
+
+<style>
+    .canli-container {
+        max-width: 1100px;
+        margin: 0 auto;
+        display: grid;
+        gap: 20px;
+    }
+
+    .ihale-bilgi .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 12px;
+    }
+
+    .ihale-bilgi .label {
+        font-size: .85rem;
+        color: #6b7280;
+    }
+
+    .ihale-bilgi .value {
+        font-weight: 600;
+    }
+
+    .timers-rank {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 16px;
+        align-items: center;
+    }
+
+    .timers {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+        gap: 12px;
+    }
+
+    .timer-card {
+        border: 1px solid #e5e7eb;
+        background: #f9fafb;
+        border-radius: 10px;
+        padding: 12px 16px;
+    }
+
+    .timer-title {
+        font-size: .9rem;
+        color: #6b7280;
+    }
+
+    .timer-value {
+        font-size: 1.8rem;
+        font-weight: 700;
+        margin: 4px 0;
+    }
+
+    .timer-sub {
+        font-size: .85rem;
+        color: #374151;
+    }
+
+    .rank-badge {
+        display: inline-flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        width: 90px;
+        height: 90px;
+        border-radius: 50%;
+        background: #0d6efd;
+        color: #fff;
+    }
+
+    .rank-number {
+        font-size: 2rem;
+        line-height: 1;
+    }
+
+    .rank-label {
+        font-size: .8rem;
+        opacity: .9;
+    }
+
+    .items-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .items-table th,
+    .items-table td {
+        border-bottom: 1px solid #eee;
+        padding: 10px;
+        text-align: left;
+        vertical-align: middle;
+    }
+
+    .items-table thead th {
+        background: #f3f4f6;
+        font-weight: 600;
+    }
+
+    .input-price {
+        width: 140px;
+        padding: 4px 6px;
+    }
+
+    .totals {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .totals-box {
+        background: #f1f5f9;
+        border: 1px solid #e2e8f0;
+        padding: 10px 14px;
+        border-radius: 6px;
+    }
+
+    .submit-btn {
+        background: #0d6efd;
+        color: #fff;
+        border: none;
+        padding: 10px 16px;
+        border-radius: 6px;
+    }
+</style>
+
+<script>
+    (function () {
+        const roundEnd = new Date('@Model.RoundEnd.ToString("o")');
+        const tenderEnd = new Date('@Model.TenderEnd.ToString("o")');
+        const roundEl = document.getElementById('round-timer');
+        const tenderEl = document.getElementById('tender-timer');
+        function pad(n) { return n.toString().padStart(2, '0'); }
+        function fmt(ms) {
+            let d = Math.max(0, ms);
+            const m = Math.floor(d / 60000); d -= m * 60000;
+            const s = Math.floor(d / 1000);
+            return pad(m) + ":" + pad(s);
+        }
+        function tick() {
+            const now = new Date();
+            roundEl.textContent = fmt(roundEnd - now);
+            tenderEl.textContent = fmt(tenderEnd - now);
+        }
+        tick();
+        setInterval(tick, 1000);
+    })();
+
+    (function () {
+        const inputs = document.querySelectorAll('.input-price');
+        const grandTotalEl = document.getElementById('grand-total');
+        const decEl = document.getElementById('decrement-total');
+        const quantities = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Items.ConvertAll(i => i.Quantity)));
+        const prevPrices = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Items.ConvertAll(i => i.PreviousUnitPrice)));
+        function parseNum(v) { const n = parseFloat(v); return isNaN(n) ? 0 : n; }
+        function recalc() {
+            let grand = 0, prevGrand = 0;
+            document.querySelectorAll('.line-total').forEach((td) => {
+                const i = parseInt(td.getAttribute('data-index'));
+                const val = parseNum(document.querySelector(`input[data-index="${i}"]`).value);
+                const qty = parseNum(quantities[i]);
+                const line = val * qty;
+                td.textContent = line.toFixed(2) + ' ₺';
+                grand += line;
+                prevGrand += parseNum(prevPrices[i]) * qty;
+            });
+            grandTotalEl.textContent = grand.toFixed(2) + ' ₺';
+            decEl.textContent = (Math.max(0, prevGrand - grand)).toFixed(2) + ' ₺';
+        }
+        inputs.forEach(inp => inp.addEventListener('input', recalc));
+        recalc();
+    })();
+</script>
