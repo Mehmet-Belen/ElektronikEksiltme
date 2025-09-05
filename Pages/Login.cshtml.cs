@@ -1,54 +1,60 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using System.ComponentModel.DataAnnotations;
+using WebApplication1.Data;
+using WebApplication1.Models;
+using System.Linq;
 
-public class LoginModel : PageModel
+namespace WebApplication1.Pages
 {
-    [BindProperty]
-    [Required(ErrorMessage = "Kullanıcı adı gereklidir")]
-    public string Username { get; set; } = string.Empty;
-
-    [BindProperty]
-    [Required(ErrorMessage = "Şifre gereklidir")]
-    public string Password { get; set; } = string.Empty;
-
-    [BindProperty]
-    public bool RememberMe { get; set; }
-
-    public string ErrorMessage { get; set; } = string.Empty;
-
-    public void OnGet()
+    public class LoginModel : PageModel
     {
-        // Login sayfası yüklendiğinde
-    }
+        private readonly AppDbContext _context;
 
-    public IActionResult OnPost()
-    {
-        if (!ModelState.IsValid)
+        public LoginModel(AppDbContext context)
         {
-            return Page();
+            _context = context;
         }
 
-        // Basit demo authentication
-        if (ValidateUser(Username, Password))
-        {
-            // Başarılı giriş - ana sayfaya yönlendir
-            // Gerçek uygulamada burada session/cookie oluşturulur
-            TempData["LoginMessage"] = $"Hoş geldiniz, {Username}!";
-            return RedirectToPage("/Index");
-        }
-        else
-        {
-            ErrorMessage = "Kullanıcı adı veya şifre hatalı!";
-            return Page();
-        }
-    }
+        [BindProperty]
+        [Required(ErrorMessage = "Kullanıcı adı gereklidir")]
+        public string Username { get; set; } = string.Empty;
 
-    private bool ValidateUser(string username, string password)
-    {
-        // Demo için basit kontrol
-        // Gerçek uygulamada veritabanından kontrol edilir
-        return (username == "admin" && password == "123456") ||
-               (username == "user" && password == "password");
+        [BindProperty]
+        [Required(ErrorMessage = "Şifre gereklidir")]
+        public string Password { get; set; } = string.Empty;
+
+        [BindProperty]
+        public bool RememberMe { get; set; }
+
+        public string ErrorMessage { get; set; } = string.Empty;
+
+        public void OnGet()
+        {
+            // Login sayfası yüklendiğinde
+        }
+
+        public IActionResult OnPost()
+        {
+            if (!ModelState.IsValid)
+            {
+                return Page();
+            }
+
+            var user = _context.Users
+                   .FirstOrDefault(u => u.Username == Username && u.Password == Password);
+
+            if (user != null)
+            {
+                HttpContext.Session.SetString("Username", user.Username);
+                return RedirectToPage("/Index");
+            }
+            else
+            {
+                ErrorMessage = "Kullanıcı adı veya şifre hatalı!";
+                return Page();
+            }
+
+        }
     }
 }
