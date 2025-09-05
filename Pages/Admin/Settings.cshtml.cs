@@ -76,6 +76,10 @@ namespace WebApplication1.Pages.Admin
 
             [Display(Name = "Bir oturum içinde sınırsız sayıda tur yapılabilsin")]
             public bool AllowUnlimitedRounds { get; set; }
+
+            [BindProperty]
+            public int Adet { get; set; }
+
         }
     }
 }
