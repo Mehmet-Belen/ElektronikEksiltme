@@ -1,5 +1,6 @@
 using WebApplication1.Data;
 using Microsoft.EntityFrameworkCore;
+using WebApplication1.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -20,6 +21,8 @@ builder.Services.AddSession(options =>
     options.Cookie.IsEssential = true;
 });
 
+builder.Services.AddSingleton<IAuctionSettingsService, AuctionSettingsService>();
+
 
 // Add services to the container.
 builder.Services.AddRazorPages();
@@ -35,7 +38,7 @@ if (!app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
-app.UseStaticFiles();
+app.UseStaticFiles();       //static files      //wwwroot               
 
 app.UseSession();
 

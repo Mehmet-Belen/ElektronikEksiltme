@@ -1,4 +1,7 @@
-﻿<!DOCTYPE html>
+﻿@using System
+@using Microsoft.AspNetCore.Http
+@inject Microsoft.Extensions.Configuration.IConfiguration Configuration
+<!DOCTYPE html>
 <html lang="tr">
 
 
@@ -40,6 +43,18 @@
                         <li class="nav-item">
                             <a class="nav-link text-dark" asp-area="" asp-page="/Login">Giriş</a>
                         </li>
+                        @{
+                            var username = Context.Session.GetString("Username");
+                            var admins = Configuration.GetSection("AdminUsers").Get<string[]>() ?? Array.Empty<string>();
+                            var isAdmin = !string.IsNullOrEmpty(username) && admins.Contains(username,
+                            StringComparer.OrdinalIgnoreCase);
+                        }
+                        @if (isAdmin)
+                        {
+                            <li class="nav-item">
+                                <a class="nav-link text-dark" asp-area="" asp-page="/Admin/Settings">Yönetim</a>
+                            </li>
+                        }
                     </ul>
                 </div>
             </div>
