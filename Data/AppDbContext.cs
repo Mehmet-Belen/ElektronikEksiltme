@@ -9,6 +9,11 @@ namespace WebApplication1.Data
 
         public DbSet<User> Users { get; set; }
         public DbSet<IhaleBilgileri> IhaleBilgileri { get; set; }
+        public DbSet<IhaleKalemleri> IhaleKalemleri { get; set; }
+
+        public DbSet<EksiltmeOturumlari> EksiltmeOturumlari { get; set; }
+
+        public DbSet<OturumKalemFiyatlari> OturumKalemFiyatlari { get; set; }
 
     }
 }
