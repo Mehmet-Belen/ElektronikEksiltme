@@ -2,9 +2,17 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.AspNetCore.Mvc;
 using System;
 using System.Collections.Generic;
+using System.Linq;
+using WebApplication1.Data;
 
 public class ElektronikEksiltmeOturumModel : PageModel
 {
+    private readonly AppDbContext _db;
+
+    public ElektronikEksiltmeOturumModel(AppDbContext db)
+    {
+        _db = db;
+    }
     [BindProperty(SupportsGet = true, Name = "ikn")]
     public string IKN { get; set; } = string.Empty;
 
@@ -13,26 +21,31 @@ public class ElektronikEksiltmeOturumModel : PageModel
 
     public void OnGet()
     {
-        // In real app, fetch by IKN. For now, mock data based on IKN or default.
-        Ihale = GetSampleDetail(IKN);
-        Rounds = BuildRounds(Ihale.SessionStart, Ihale.SessionEnd, 3);
-    }
-
-    private IhaleDetail GetSampleDetail(string ikn)
-    {
-        var start = DateTime.Now.AddMinutes(15);
-        var end = start.AddHours(1);
-        return new IhaleDetail
+        var entity = _db.IhaleBilgileri.FirstOrDefault(x => x.IhaleKN == (string.IsNullOrWhiteSpace(IKN) ? x.IhaleKN : IKN));
+        if (entity == null)
         {
-            IKN = string.IsNullOrWhiteSpace(ikn) ? "2024/123456" : ikn,
-            AuthorityName = "Örnek İdare Başkanlığı",
-            TenderName = "Malzeme Alımı İşi",
-            PartName = "Kısım 1",
-            MinimumDecrement = 1000,
+            Ihale = new IhaleDetail();
+            Rounds = new List<RoundInfo>();
+            return;
+        }
+
+        var start = entity.BaslangicTarihi;
+        var end = entity.BitisTarihi ?? start.AddHours(1);
+        Ihale = new IhaleDetail
+        {
+            IKN = entity.IhaleKN,
+            AuthorityName = entity.IdareAdi,
+            TenderName = entity.IhaleAdi,
+            PartName = entity.KisimAdi,
+            MinimumDecrement = (int)(entity.AsgariFark ?? 0),
             SessionStart = start,
             SessionEnd = end
         };
+
+        Rounds = BuildRounds(Ihale.SessionStart, Ihale.SessionEnd, 3);
     }
+
+    // Removed sample detail method; now using database
 
     private List<RoundInfo> BuildRounds(DateTime start, DateTime end, int roundCount)
     {

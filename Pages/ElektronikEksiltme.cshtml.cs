@@ -3,9 +3,17 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using WebApplication1.Data;
+using WebApplication1.Models;
 
 public class ElektronikEksiltmeModel : PageModel
 {
+    private readonly AppDbContext _db;
+
+    public ElektronikEksiltmeModel(AppDbContext db)
+    {
+        _db = db;
+    }
     [BindProperty(SupportsGet = true)]
     public string Query { get; set; } = string.Empty;
 
@@ -23,7 +31,16 @@ public class ElektronikEksiltmeModel : PageModel
 
     public void OnGet()
     {
-        AllItems = GetSampleData();
+        AllItems = _db.IhaleBilgileri
+            .Select(x => new EksiltmeItem
+            {
+                IKN = x.IhaleKN,
+                PartName = x.KisimAdi,
+                SessionDateTime = x.BaslangicTarihi,
+                Status = MapDurumToStatus(x.Durum)
+            })
+            .ToList();
+
         FilteredItems = ApplyFilters(AllItems);
     }
 
@@ -43,8 +60,8 @@ public class ElektronikEksiltmeModel : PageModel
         if (selectedAnyStatus)
         {
             var selectedStatuses = new List<EksiltmeStatus>();
-            if (FilterStarted) selectedStatuses.Add(EksiltmeStatus.Basledi);
-            if (FilterEnded) selectedStatuses.Add(EksiltmeStatus.Bitti);
+            if (FilterStarted) selectedStatuses.Add(EksiltmeStatus.Baslamadi);
+            if (FilterEnded) selectedStatuses.Add(EksiltmeStatus.Basladi);
             if (FilterCompleted) selectedStatuses.Add(EksiltmeStatus.Tamamlandi);
             query = query.Where(x => selectedStatuses.Contains(x.Status));
         }
@@ -54,14 +71,14 @@ public class ElektronikEksiltmeModel : PageModel
             .ToList();
     }
 
-    private List<EksiltmeItem> GetSampleData()
+    private static EksiltmeStatus MapDurumToStatus(int durum)
     {
-        return new List<EksiltmeItem>
+        return durum switch
         {
-            new EksiltmeItem{ IKN = "2024/123456", PartName = "Tıbbi Sarf Malzeme - Kısım 1", SessionDateTime = DateTime.Now.AddHours(2), Status = EksiltmeStatus.Basledi },
-            new EksiltmeItem{ IKN = "2024/654321", PartName = "Bilgisayar Donanım - Kısım 2", SessionDateTime = DateTime.Now.AddDays(-1).AddHours(1), Status = EksiltmeStatus.Bitti },
-            new EksiltmeItem{ IKN = "2025/111222", PartName = "Temizlik Hizmeti - Kısım 3", SessionDateTime = DateTime.Now.AddDays(-7), Status = EksiltmeStatus.Tamamlandi },
-            new EksiltmeItem{ IKN = "2025/333444", PartName = "İnşaat Onarım - Kısım 4", SessionDateTime = DateTime.Now.AddHours(5), Status = EksiltmeStatus.Basledi }
+            0 => EksiltmeStatus.Baslamadi,
+            1 => EksiltmeStatus.Basladi,
+            2 => EksiltmeStatus.Tamamlandi,
+            _ => EksiltmeStatus.Baslamadi
         };
     }
 
@@ -73,8 +90,8 @@ public class ElektronikEksiltmeModel : PageModel
         public EksiltmeStatus Status { get; set; }
         public string StatusText => Status switch
         {
-            EksiltmeStatus.Basledi => "Başladı",
-            EksiltmeStatus.Bitti => "Bitti",
+            EksiltmeStatus.Baslamadi => "Başlamadı",
+            EksiltmeStatus.Basladi => "Başladı",
             EksiltmeStatus.Tamamlandi => "Tamamlandı",
             _ => string.Empty
         };
@@ -82,8 +99,8 @@ public class ElektronikEksiltmeModel : PageModel
 
     public enum EksiltmeStatus
     {
-        Basledi,
-        Bitti,
+        Baslamadi,
+        Basladi,
         Tamamlandi
     }
 }

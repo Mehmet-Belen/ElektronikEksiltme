@@ -3,9 +3,16 @@ using Microsoft.AspNetCore.Mvc;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using WebApplication1.Data;
 
 public class ElektronikEksiltmeCanliModel : PageModel
 {
+    private readonly AppDbContext _db;
+
+    public ElektronikEksiltmeCanliModel(AppDbContext db)
+    {
+        _db = db;
+    }
     [BindProperty(SupportsGet = true, Name = "ikn")]
     public string IKN { get; set; } = string.Empty;
 
@@ -22,18 +29,49 @@ public class ElektronikEksiltmeCanliModel : PageModel
 
     public void OnGet()
     {
-        Ihale = GetIhale();
-        RoundEnd = DateTime.Now.AddMinutes(10);
-        TenderEnd = DateTime.Now.AddMinutes(45);
-        CurrentRank = 3; // sample
+        var entity = _db.IhaleBilgileri.FirstOrDefault(x => x.IhaleKN == (string.IsNullOrWhiteSpace(IKN) ? x.IhaleKN : IKN));
+        if (entity == null)
+        {
+            Ihale = new IhaleSimple();
+            Items = new List<OfferItem>();
+            return;
+        }
+
+        Ihale = new IhaleSimple
+        {
+            IKN = entity.IhaleKN,
+            AuthorityName = entity.IdareAdi,
+            TenderName = entity.IhaleAdi,
+            PartName = entity.KisimAdi
+        };
+
+        RoundEnd = (entity.BitisTarihi ?? entity.BaslangicTarihi.AddMinutes(30));
+        TenderEnd = (entity.BitisTarihi ?? entity.BaslangicTarihi.AddHours(1));
+        CurrentRank = 3;
         Items = GetSampleItems();
     }
 
     public IActionResult OnPost()
     {
-        Ihale = GetIhale();
-        RoundEnd = DateTime.Now.AddMinutes(10);
-        TenderEnd = DateTime.Now.AddMinutes(45);
+        var entity = _db.IhaleBilgileri.FirstOrDefault(x => x.IhaleKN == (string.IsNullOrWhiteSpace(IKN) ? x.IhaleKN : IKN));
+        if (entity != null)
+        {
+            Ihale = new IhaleSimple
+            {
+                IKN = entity.IhaleKN,
+                AuthorityName = entity.IdareAdi,
+                TenderName = entity.IhaleAdi,
+                PartName = entity.KisimAdi
+            };
+
+            RoundEnd = (entity.BitisTarihi ?? entity.BaslangicTarihi.AddMinutes(30));
+            TenderEnd = (entity.BitisTarihi ?? entity.BaslangicTarihi.AddHours(1));
+        }
+        else
+        {
+            Ihale = new IhaleSimple();
+        }
+
         CurrentRank = 3;
         // Items bound from form; ensure derived values consistent
         foreach (var item in Items)
@@ -43,16 +81,7 @@ public class ElektronikEksiltmeCanliModel : PageModel
         return Page();
     }
 
-    private IhaleSimple GetIhale()
-    {
-        return new IhaleSimple
-        {
-            IKN = string.IsNullOrWhiteSpace(IKN) ? "2024/123456" : IKN,
-            AuthorityName = "Örnek İdare Başkanlığı",
-            TenderName = "Malzeme Alımı İşi",
-            PartName = "Kısım 1",
-        };
-    }
+    // Removed GetIhale; now pulling from database
 
     private List<OfferItem> GetSampleItems()
     {
