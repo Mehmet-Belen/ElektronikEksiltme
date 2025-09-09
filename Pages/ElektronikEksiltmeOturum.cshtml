@@ -4,7 +4,7 @@
     ViewData["Title"] = "Elektronik Eksiltme Oturumu";
 }
 
-<h1>@ViewData["Title"]</h1>
+<h1 class="page-title">@ViewData["Title"]</h1>
 
 <div class="oturum-container">
     <section class="ihale-bilgi">
@@ -36,8 +36,8 @@
     <section class="countdown">
         <h2>Eksiltme Başlangıcına Kalan Süre</h2>
         <div id="countdown" class="countdown-clock">00:00:00</div>
-        <div class="countdown-sub">Başlangıç: @Model.Ihale.SessionStart:dd.MM.yyyy HH:mm • Bitiş:
-            @Model.Ihale.SessionEnd:dd.MM.yyyy HH:mm</div>
+        <div class="countdown-sub">Başlangıç: @Model.Ihale.SessionStart • Bitiş:
+            @Model.Ihale.SessionEnd</div>
     </section>
 
     <section class="timeline">
@@ -55,8 +55,8 @@
                 {
                     <tr>
                         <td>@round.Name</td>
-                        <td>@round.Start:dd.MM.yyyy HH:mm</td>
-                        <td>@round.End:dd.MM.yyyy HH:mm</td>
+                        <td>@round.Start</td>
+                        <td>@round.End</td>
                     </tr>
                 }
             </tbody>
@@ -68,6 +68,11 @@
 </div>
 
 <style>
+    .page-title {
+
+        margin-left: 90px;
+    }
+
     .oturum-container {
         max-width: 1100px;
         margin: 0 auto;
@@ -146,12 +151,14 @@
         function tick() {
             const now = new Date();
             let diff = Math.max(0, startTime - now);
+            const days = Math.floor(diff / 86_400_000); // 1 gün = 24 * 60 * 60 * 1000 ms
+            diff -= days * 86_400_000;
             const hours = Math.floor(diff / 3_600_000);
             diff -= hours * 3_600_000;
             const minutes = Math.floor(diff / 60_000);
             diff -= minutes * 60_000;
             const seconds = Math.floor(diff / 1000);
-            el.textContent = `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
+            el.textContent = `${days} gün ${pad(hours)} saat ${pad(minutes)} dakika ${pad(seconds)} saniye`;
         }
         tick();
         setInterval(tick, 1000);

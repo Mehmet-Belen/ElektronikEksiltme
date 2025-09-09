@@ -1,10 +1,10 @@
 @page
 @model ElektronikEksiltmeCanliModel
 @{
-    ViewData["Title"] = "Elektronik Eksiltme - Canlı Oturum";
+    ViewData["Title"] = " Elektronik Eksiltme - Canlı Oturum";
 }
 
-<h1>@ViewData["Title"]</h1>
+<h1 class="page-title">@ViewData["Title"]</h1>
 
 <div class="canli-container">
     <section class="ihale-bilgi">
@@ -34,12 +34,12 @@
             <div class="timer-card">
                 <div class="timer-title">Turun Bitişine Kalan</div>
                 <div id="round-timer" class="timer-value">00:00</div>
-                <div class="timer-sub">Bitiş: @Model.RoundEnd:dd.MM.yyyy HH:mm</div>
+                <div class="timer-sub">Bitiş: @Model.RoundEnd</div>
             </div>
             <div class="timer-card">
                 <div class="timer-title">Eksiltmenin Bitişine Kalan</div>
                 <div id="tender-timer" class="timer-value">00:00</div>
-                <div class="timer-sub">Bitiş: @Model.TenderEnd:dd.MM.yyyy HH:mm</div>
+                <div class="timer-sub">Bitiş: @Model.TenderEnd</div>
             </div>
         </div>
         <div class="rank-badge">
@@ -111,6 +111,10 @@
 </div>
 
 <style>
+    .page-title {
+        margin-left: 92px;
+    }
+
     .canli-container {
         max-width: 1100px;
         margin: 0 auto;
@@ -244,10 +248,18 @@
         const tenderEl = document.getElementById('tender-timer');
         function pad(n) { return n.toString().padStart(2, '0'); }
         function fmt(ms) {
-            let d = Math.max(0, ms);
-            const m = Math.floor(d / 60000); d -= m * 60000;
-            const s = Math.floor(d / 1000);
-            return pad(m) + ":" + pad(s);
+            let totalSeconds = Math.floor(Math.max(0, ms) / 1000);
+
+            const days = Math.floor(totalSeconds / 86400);
+            totalSeconds %= 86400;
+
+            const hours = Math.floor(totalSeconds / 3600);
+            totalSeconds %= 3600;
+
+            const minutes = Math.floor(totalSeconds / 60);
+            const seconds = totalSeconds % 60;
+
+            return `${days}g ${pad(hours)}s ${pad(minutes)}dk ${pad(seconds)}sn`;
         }
         function tick() {
             const now = new Date();
