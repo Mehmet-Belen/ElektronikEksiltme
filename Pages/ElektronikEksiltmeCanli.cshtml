@@ -49,6 +49,7 @@
     </section>
 
     <form method="post">
+        <input type="hidden" name="CurrentRound" value="@Model.CurrentRound" />
         <section class="items">
             <h2>Kalemlere İlişkin Teklif Bilgileri</h2>
             <table class="items-table">
@@ -93,7 +94,17 @@
                 </div>
             </div>
             <div>
-                <button type="submit" class="submit-btn">Teklifi Güncelle</button>
+                <span>Tur: <strong>@Model.CurrentRound</strong> / <strong>@Model.TotalRounds</strong></span>
+            </div>
+            <div>
+                @if (Model.CurrentRound < Model.TotalRounds)
+                {
+                    <button type="submit" name="ActionName" value="next" class="submit-btn">Sonraki Oturuma Geç</button>
+                }
+                else
+                {
+                    <button type="submit" name="ActionName" value="finish" class="submit-btn">Oturumu Bitir</button>
+                }
             </div>
         </section>
     </form>
