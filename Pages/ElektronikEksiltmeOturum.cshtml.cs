@@ -4,14 +4,17 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using WebApplication1.Data;
+using WebApplication1.Services;
 
 public class ElektronikEksiltmeOturumModel : PageModel
 {
     private readonly AppDbContext _db;
+    private readonly IAuctionSettingsService _settingsService;
 
-    public ElektronikEksiltmeOturumModel(AppDbContext db)
+    public ElektronikEksiltmeOturumModel(AppDbContext db, IAuctionSettingsService settingsService)
     {
         _db = db;
+        _settingsService = settingsService;
     }
     [BindProperty(SupportsGet = true, Name = "ikn")]
     public string IKN { get; set; } = string.Empty;
@@ -42,7 +45,9 @@ public class ElektronikEksiltmeOturumModel : PageModel
             SessionEnd = end
         };
 
-        Rounds = BuildRounds(Ihale.SessionStart, Ihale.SessionEnd, 3);
+        var settings = _settingsService.Get();
+        var roundCount = Math.Max(1, settings.RoundCount);
+        Rounds = BuildRounds(Ihale.SessionStart, Ihale.SessionEnd, roundCount);
     }
 
     // Removed sample detail method; now using database

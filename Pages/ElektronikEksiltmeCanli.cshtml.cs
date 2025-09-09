@@ -56,11 +56,13 @@ public class ElektronikEksiltmeCanliModel : PageModel
             PartName = entity.KisimAdi
         };
 
-        RoundEnd = (entity.BitisTarihi ?? entity.BaslangicTarihi.AddMinutes(30));
         TenderEnd = (entity.BitisTarihi ?? entity.BaslangicTarihi.AddHours(1));
         var settings = _settingsService.Get();
         TotalRounds = Math.Max(1, settings.RoundCount);
         CurrentRound = 1;
+        var total = TenderEnd - entity.BaslangicTarihi;
+        var perRound = TimeSpan.FromTicks(total.Ticks / TotalRounds);
+        RoundEnd = entity.BaslangicTarihi.AddTicks(perRound.Ticks * CurrentRound);
         CurrentRank = 3;
         Items = GetSampleItems();
     }
@@ -78,7 +80,6 @@ public class ElektronikEksiltmeCanliModel : PageModel
                 PartName = entity.KisimAdi
             };
 
-            RoundEnd = (entity.BitisTarihi ?? entity.BaslangicTarihi.AddMinutes(30));
             TenderEnd = (entity.BitisTarihi ?? entity.BaslangicTarihi.AddHours(1));
         }
         else
@@ -102,6 +103,14 @@ public class ElektronikEksiltmeCanliModel : PageModel
         {
             // End session - redirect to session list for simplicity
             return RedirectToPage("/ElektronikEksiltme");
+        }
+
+        // Recompute per-round end based on current round
+        if (entity != null)
+        {
+            var total = TenderEnd - entity.BaslangicTarihi;
+            var perRound = TimeSpan.FromTicks(total.Ticks / TotalRounds);
+            RoundEnd = entity.BaslangicTarihi.AddTicks(perRound.Ticks * CurrentRound);
         }
 
         CurrentRank = 3;
