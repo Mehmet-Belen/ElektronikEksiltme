@@ -4,14 +4,17 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using WebApplication1.Data;
+using WebApplication1.Services;
 
 public class ElektronikEksiltmeCanliModel : PageModel
 {
     private readonly AppDbContext _db;
+    private readonly IAuctionSettingsService _settingsService;
 
-    public ElektronikEksiltmeCanliModel(AppDbContext db)
+    public ElektronikEksiltmeCanliModel(AppDbContext db, IAuctionSettingsService settingsService)
     {
         _db = db;
+        _settingsService = settingsService;
     }
     [BindProperty(SupportsGet = true, Name = "ikn")]
     public string IKN { get; set; } = string.Empty;
@@ -23,6 +26,14 @@ public class ElektronikEksiltmeCanliModel : PageModel
 
     [BindProperty]
     public List<OfferItem> Items { get; set; } = new();
+
+    public int TotalRounds { get; set; }
+
+    [BindProperty]
+    public int CurrentRound { get; set; }
+
+    [BindProperty]
+    public string? ActionName { get; set; }
 
     public decimal GrandTotal => Items.Sum(i => i.LineTotal);
     public decimal DecrementTotal => Items.Sum(i => (i.PreviousUnitPrice - i.ReOfferUnitPrice) * (decimal)i.Quantity);
@@ -47,6 +58,9 @@ public class ElektronikEksiltmeCanliModel : PageModel
 
         RoundEnd = (entity.BitisTarihi ?? entity.BaslangicTarihi.AddMinutes(30));
         TenderEnd = (entity.BitisTarihi ?? entity.BaslangicTarihi.AddHours(1));
+        var settings = _settingsService.Get();
+        TotalRounds = Math.Max(1, settings.RoundCount);
+        CurrentRound = 1;
         CurrentRank = 3;
         Items = GetSampleItems();
     }
@@ -70,6 +84,24 @@ public class ElektronikEksiltmeCanliModel : PageModel
         else
         {
             Ihale = new IhaleSimple();
+        }
+
+        var settings = _settingsService.Get();
+        TotalRounds = Math.Max(1, settings.RoundCount);
+        if (CurrentRound <= 0) CurrentRound = 1;
+
+        // Advance round if requested
+        if (string.Equals(ActionName, "next", StringComparison.OrdinalIgnoreCase))
+        {
+            if (CurrentRound < TotalRounds)
+            {
+                CurrentRound++;
+            }
+        }
+        else if (string.Equals(ActionName, "finish", StringComparison.OrdinalIgnoreCase))
+        {
+            // End session - redirect to session list for simplicity
+            return RedirectToPage("/ElektronikEksiltme");
         }
 
         CurrentRank = 3;

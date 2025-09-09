@@ -1,4 +1,5 @@
 {
   "ExcludeTopBidderInNextRound": true,
-  "AllowUnlimitedRounds": true
+  "AllowUnlimitedRounds": false,
+  "RoundCount": 6
 }

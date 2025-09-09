@@ -33,7 +33,8 @@ namespace WebApplication1.Pages.Admin
             Form = new SettingsForm
             {
                 ExcludeTopBidderInNextRound = settings.ExcludeTopBidderInNextRound,
-                AllowUnlimitedRounds = settings.AllowUnlimitedRounds
+                AllowUnlimitedRounds = settings.AllowUnlimitedRounds,
+                RoundCount = Math.Max(1, settings.RoundCount)
             };
             return Page();
         }
@@ -53,7 +54,8 @@ namespace WebApplication1.Pages.Admin
             var toSave = new AuctionSettings
             {
                 ExcludeTopBidderInNextRound = Form.ExcludeTopBidderInNextRound,
-                AllowUnlimitedRounds = Form.AllowUnlimitedRounds
+                AllowUnlimitedRounds = Form.AllowUnlimitedRounds,
+                RoundCount = Math.Max(1, Form.RoundCount)
             };
             _settingsService.Save(toSave);
             SuccessMessage = "Ayarlar kaydedildi.";
@@ -77,8 +79,9 @@ namespace WebApplication1.Pages.Admin
             [Display(Name = "Bir oturum içinde sınırsız sayıda tur yapılabilsin")]
             public bool AllowUnlimitedRounds { get; set; }
 
-            [BindProperty]
-            public int Adet { get; set; }
+            [Range(1, 50)]
+            [Display(Name = "Tur sayısı")]
+            public int RoundCount { get; set; }
 
         }
     }
