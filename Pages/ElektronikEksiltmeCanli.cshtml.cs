@@ -6,6 +6,7 @@ using System.Linq;
 using WebApplication1.Data;
 using WebApplication1.Services;
 using WebApplication1.Models;
+using System.Text.Json;
 
 public class ElektronikEksiltmeCanliModel : PageModel
 {
@@ -39,6 +40,8 @@ public class ElektronikEksiltmeCanliModel : PageModel
     public decimal GrandTotal => Items.Sum(i => i.LineTotal);
     public decimal DecrementTotal => Items.Sum(i => (i.PreviousUnitPrice - i.ReOfferUnitPrice) * (decimal)i.Quantity);
 
+    private string GetSessionKey() => $"EE:{IKN}:Items";
+
     public void OnGet()
     {
         var entity = _db.IhaleBilgileri.FirstOrDefault(x => x.IhaleKN == (string.IsNullOrWhiteSpace(IKN) ? x.IhaleKN : IKN));
@@ -66,6 +69,17 @@ public class ElektronikEksiltmeCanliModel : PageModel
         RoundEnd = entity.BaslangicTarihi.AddTicks(perRound.Ticks * CurrentRound);
         CurrentRank = 3;
         Items = LoadItemsFromDatabase(entity.IhaleID);
+
+        // Load persisted items from session if any (continue live session)
+        var sessionJson = HttpContext.Session.GetString(GetSessionKey());
+        if (!string.IsNullOrEmpty(sessionJson))
+        {
+            var persisted = JsonSerializer.Deserialize<List<OfferItem>>(sessionJson) ?? new List<OfferItem>();
+            if (persisted.Count == Items.Count)
+            {
+                Items = persisted;
+            }
+        }
     }
 
     public IActionResult OnPost()
@@ -103,6 +117,8 @@ public class ElektronikEksiltmeCanliModel : PageModel
         else if (string.Equals(ActionName, "finish", StringComparison.OrdinalIgnoreCase))
         {
             // End session - redirect to session list for simplicity
+            // Clear persisted session data for this live session
+            HttpContext.Session.Remove(GetSessionKey());
             return RedirectToPage("/ElektronikEksiltme");
         }
 
@@ -125,10 +141,32 @@ public class ElektronikEksiltmeCanliModel : PageModel
                 for (int i = 0; i < baseItems.Count; i++)
                 {
                     decimal posted = Items[i]?.ReOfferUnitPrice ?? 0m;
-                    baseItems[i].ReOfferUnitPrice = posted < 0m ? 0m : posted;
+                    // Treat non-positive or empty as "no change" -> use previous unit price
+                    if (posted <= 0m)
+                    {
+                        baseItems[i].ReOfferUnitPrice = baseItems[i].PreviousUnitPrice;
+                    }
+                    else
+                    {
+                        baseItems[i].ReOfferUnitPrice = posted;
+                    }
                 }
             }
             Items = baseItems;
+
+            // If advanced to next round, carry re-offer to previous price and reset input default
+            if (string.Equals(ActionName, "next", StringComparison.OrdinalIgnoreCase))
+            {
+                for (int i = 0; i < Items.Count; i++)
+                {
+                    var newPrev = Items[i].ReOfferUnitPrice;
+                    Items[i].PreviousUnitPrice = newPrev;
+                    Items[i].ReOfferUnitPrice = newPrev;
+                }
+            }
+
+            // Persist current items for the live session
+            HttpContext.Session.SetString(GetSessionKey(), JsonSerializer.Serialize(Items));
         }
         return Page();
     }

@@ -59,9 +59,9 @@
                         <th>Menşei</th>
                         <th>Miktarı</th>
                         <th>Birimi</th>
-                        <th>Önceki Birim Fiyatı</th>
+                        <th>Güncel Birim Fiyatı</th>
                         <th>Birim Tekrar Fiyatı</th>
-                        <th>Kalem Toplam Fiyatı</th>
+                        <th>Yeni Kalem Toplam Fiyatı</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -281,7 +281,9 @@
             let grand = 0, prevGrand = 0;
             document.querySelectorAll('.line-total').forEach((td) => {
                 const i = parseInt(td.getAttribute('data-index'));
-                const val = parseNum(document.querySelector(`input[data-index="${i}"]`).value);
+                const raw = document.querySelector(`input[data-index="${i}"]`).value;
+                const hasInput = raw !== undefined && raw !== null && raw !== '';
+                const val = hasInput ? parseNum(raw) : parseNum(prevPrices[i]);
                 const qty = parseNum(quantities[i]);
                 const line = val * qty;
                 td.textContent = line.toFixed(2) + ' ₺';
