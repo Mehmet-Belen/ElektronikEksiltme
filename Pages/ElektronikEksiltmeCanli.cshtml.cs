@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Linq;
 using WebApplication1.Data;
 using WebApplication1.Services;
+using WebApplication1.Models;
 
 public class ElektronikEksiltmeCanliModel : PageModel
 {
@@ -64,7 +65,7 @@ public class ElektronikEksiltmeCanliModel : PageModel
         var perRound = TimeSpan.FromTicks(total.Ticks / TotalRounds);
         RoundEnd = entity.BaslangicTarihi.AddTicks(perRound.Ticks * CurrentRound);
         CurrentRank = 3;
-        Items = GetSampleItems();
+        Items = LoadItemsFromDatabase(entity.IhaleID);
     }
 
     public IActionResult OnPost()
@@ -114,24 +115,47 @@ public class ElektronikEksiltmeCanliModel : PageModel
         }
 
         CurrentRank = 3;
-        // Items bound from form; ensure derived values consistent
-        foreach (var item in Items)
+
+        // Reload base items from database and merge posted re-offer prices
+        if (entity != null)
         {
-            if (item.ReOfferUnitPrice < 0) item.ReOfferUnitPrice = 0;
+            var baseItems = LoadItemsFromDatabase(entity.IhaleID);
+            if (Items != null && Items.Count == baseItems.Count)
+            {
+                for (int i = 0; i < baseItems.Count; i++)
+                {
+                    decimal posted = Items[i]?.ReOfferUnitPrice ?? 0m;
+                    baseItems[i].ReOfferUnitPrice = posted < 0m ? 0m : posted;
+                }
+            }
+            Items = baseItems;
         }
         return Page();
     }
 
     // Removed GetIhale; now pulling from database
 
-    private List<OfferItem> GetSampleItems()
+    private List<OfferItem> LoadItemsFromDatabase(int ihaleId)
     {
-        return new List<OfferItem>
+        var kalemler = _db.IhaleKalemleri
+            .Where(k => k.IhaleId == ihaleId)
+            .OrderBy(k => k.KalemId)
+            .ToList();
+
+        var items = new List<OfferItem>();
+        foreach (var k in kalemler)
         {
-            new OfferItem{ ItemName = "Kalem 1", Origin = "TR", Quantity = 100, Unit = "Adet", PreviousUnitPrice = 150m, ReOfferUnitPrice = 145m },
-            new OfferItem{ ItemName = "Kalem 2", Origin = "DE", Quantity = 50, Unit = "Adet", PreviousUnitPrice = 200m, ReOfferUnitPrice = 190m },
-            new OfferItem{ ItemName = "Kalem 3", Origin = "CN", Quantity = 20, Unit = "Koli", PreviousUnitPrice = 1200m, ReOfferUnitPrice = 1150m },
-        };
+            items.Add(new OfferItem
+            {
+                ItemName = k.KalemAdi ?? string.Empty,
+                Origin = k.Mensei ?? string.Empty,
+                Quantity = (double)k.Miktar,
+                Unit = k.Birimi ?? string.Empty,
+                PreviousUnitPrice = k.OncekiBirimFiyati ?? 0m,
+                ReOfferUnitPrice = k.OncekiBirimFiyati ?? 0m
+            });
+        }
+        return items;
     }
 
     public class IhaleSimple
