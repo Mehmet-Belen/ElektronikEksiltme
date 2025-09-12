@@ -4,10 +4,18 @@
     ViewData["Title"] = "Home page";
 }
 
-<div class="text-center">
-    <h1 class="display-4">Welcome</h1>
-    <p>Learn about <a href="https://learn.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
-    <p>
-        <a class="btn btn-primary" href="/Bidding">Go to Electronic Bidding</a>
-    </p>
-</div>
+<section class="hero text-center py-5">
+    <h1 class="display-4 mb-3">EKAP Elektronik Eksiltme Sistemine Hoş Geldiniz</h1>
+    <p class="lead mb-4">İhale süreçlerinizi şeffaf, hızlı ve güvenli bir şekilde yönetin.</p>
+    <div>
+        <a class="btn btn-primary btn-lg me-2" asp-page="/ElektronikEksiltme">Elektronik Eksiltmelere Git</a>
+        <a class="btn btn-outline-secondary btn-lg" asp-page="/FAQ">Sıkça Sorulan Sorular</a>
+    </div>
+</section>
+
+<style>
+    .hero {
+        background: linear-gradient(135deg, #f8fafc 0%, #eef2ff 100%);
+        border-radius: 12px;
+    }
+</style>

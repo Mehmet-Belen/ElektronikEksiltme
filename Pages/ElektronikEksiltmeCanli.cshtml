@@ -2,6 +2,7 @@
 @model ElektronikEksiltmeCanliModel
 @{
     ViewData["Title"] = " Elektronik Eksiltme - Canlı Oturum";
+    var tr = System.Globalization.CultureInfo.GetCultureInfo("tr-TR");
 }
 
 <h1 class="page-title">@ViewData["Title"]</h1>
@@ -42,10 +43,30 @@
                 <div class="timer-sub">Bitiş: @Model.TenderEnd</div>
             </div>
         </div>
-        <div class="rank-badge">
-            <span class="rank-number">@Model.CurrentRank</span>
-            <span class="rank-label">Sıralamanız</span>
-        </div>
+        <aside class="submitted-bids">
+            <div class="rank-badge inside">
+                <span class="rank-number">@Model.CurrentRank</span>
+                <span class="rank-label">Sıralamanız</span>
+            </div>
+            <div class="submitted-bids-title">Verilen Tekliflere Ait Bilgiler</div>
+            <ul class="submitted-bids-list">
+                @if (Model.SubmittedBids != null && Model.SubmittedBids.Count > 0)
+                {
+                    foreach (var s in Model.SubmittedBids.OrderBy(x => x.Round))
+                    {
+                        <li>
+                            <div><strong>Tur @s.Round</strong></div>
+                            <div>Toplam Teklif Tutarı: <strong>@s.GrandTotal.ToString("N2", tr) ₺</strong></div>
+                            <div>Yapılan Eksiltme Miktarı: <strong>@s.Decrement.ToString("N2", tr) ₺</strong></div>
+                        </li>
+                    }
+                }
+                else
+                {
+                    <li>Henüz teklif gönderilmedi</li>
+                }
+            </ul>
+        </aside>
     </section>
 
     <form method="post">
@@ -72,12 +93,12 @@
                             <td>@Model.Items[i].Origin</td>
                             <td>@Model.Items[i].Quantity</td>
                             <td>@Model.Items[i].Unit</td>
-                            <td>@Model.Items[i].PreviousUnitPrice.ToString("N2") ₺</td>
+                            <td>@Model.Items[i].PreviousUnitPrice.ToString("N2", tr) ₺</td>
                             <td>
                                 <input type="number" step="0.01" min="0" name="Items[@i].ReOfferUnitPrice"
                                     value="@Model.Items[i].ReOfferUnitPrice" class="input-price" data-index="@i" /> ₺
                             </td>
-                            <td class="line-total" data-index="@i">@Model.Items[i].LineTotal.ToString("N2") ₺</td>
+                            <td class="line-total" data-index="@i">@Model.Items[i].LineTotal.ToString("N2", tr) ₺</td>
                         </tr>
                     }
                 </tbody>
@@ -87,16 +108,18 @@
         <section class="totals">
             <div class="totals-box">
                 <div>
-                    Toplam Teklif Tutarı: <strong id="grand-total">@Model.GrandTotal.ToString("N2") ₺</strong>
+                    Toplam Teklif Tutarı: <strong id="grand-total">@Model.GrandTotal.ToString("N2", tr) ₺</strong>
                 </div>
                 <div>
-                    Eksiltme Tutarı: <strong id="decrement-total">@Model.DecrementTotal.ToString("N2") ₺</strong>
+                    Eksiltme Tutarı: <strong id="decrement-total">@Model.DecrementTotal.ToString("N2", tr) ₺</strong>
                 </div>
             </div>
             <div>
                 <span>Tur: <strong>@Model.CurrentRound</strong> / <strong>@Model.TotalRounds</strong></span>
             </div>
             <div>
+                <button type="submit" name="ActionName" value="submit" class="submit-btn"
+                    style="margin-right:8px;">Teklifi Gönder</button>
                 @if (Model.CurrentRound < Model.TotalRounds)
                 {
                     <button type="submit" name="ActionName" value="next" class="submit-btn">Sonraki Oturuma Geç</button>
@@ -195,6 +218,43 @@
         opacity: .9;
     }
 
+    .submitted-bids {
+        position: fixed;
+        margin-top: 70px;
+        top: 16px;
+        right: 20px;
+        background: #ffffff;
+        border: 1px solid #e5e7eb;
+        border-radius: 14px;
+        padding: 14px 16px 14px 16px;
+        width: 340px;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
+    }
+
+    .submitted-bids-title {
+        font-weight: 700;
+        margin-bottom: 10px;
+    }
+
+    .submitted-bids-list {
+        margin: 0;
+        padding-left: 18px;
+        max-height: 60vh;
+        overflow: auto;
+    }
+
+    .submitted-bids-list li {
+        margin-bottom: 10px;
+    }
+
+    .rank-badge.inside {
+        position: absolute;
+        top: -18px;
+        right: -18px;
+        width: 78px;
+        height: 78px;
+    }
+
     .items-table {
         width: 100%;
         border-collapse: collapse;
@@ -277,6 +337,10 @@
         const quantities = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Items.ConvertAll(i => i.Quantity)));
         const prevPrices = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Items.ConvertAll(i => i.PreviousUnitPrice)));
         function parseNum(v) { const n = parseFloat(v); return isNaN(n) ? 0 : n; }
+        function formatTr(amount) {
+            try { return amount.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+            catch { return amount.toFixed(2); }
+        }
         function recalc() {
             let grand = 0, prevGrand = 0;
             document.querySelectorAll('.line-total').forEach((td) => {
@@ -286,12 +350,12 @@
                 const val = hasInput ? parseNum(raw) : parseNum(prevPrices[i]);
                 const qty = parseNum(quantities[i]);
                 const line = val * qty;
-                td.textContent = line.toFixed(2) + ' ₺';
+                td.textContent = formatTr(line) + ' ₺';
                 grand += line;
                 prevGrand += parseNum(prevPrices[i]) * qty;
             });
-            grandTotalEl.textContent = grand.toFixed(2) + ' ₺';
-            decEl.textContent = (Math.max(0, prevGrand - grand)).toFixed(2) + ' ₺';
+            grandTotalEl.textContent = formatTr(grand) + ' ₺';
+            decEl.textContent = formatTr(Math.max(0, prevGrand - grand)) + ' ₺';
         }
         inputs.forEach(inp => inp.addEventListener('input', recalc));
         recalc();

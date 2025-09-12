@@ -41,6 +41,9 @@ public class ElektronikEksiltmeCanliModel : PageModel
     public decimal DecrementTotal => Items.Sum(i => (i.PreviousUnitPrice - i.ReOfferUnitPrice) * (decimal)i.Quantity);
 
     private string GetSessionKey() => $"EE:{IKN}:Items";
+    private string GetSubmittedKey() => $"EE:{IKN}:Submitted";
+
+    public List<SubmittedBid> SubmittedBids { get; set; } = new();
 
     public void OnGet()
     {
@@ -79,6 +82,13 @@ public class ElektronikEksiltmeCanliModel : PageModel
             {
                 Items = persisted;
             }
+        }
+
+        // Load submitted bids panel
+        var subJson = HttpContext.Session.GetString(GetSubmittedKey());
+        if (!string.IsNullOrEmpty(subJson))
+        {
+            SubmittedBids = JsonSerializer.Deserialize<List<SubmittedBid>>(subJson) ?? new List<SubmittedBid>();
         }
     }
 
@@ -119,7 +129,26 @@ public class ElektronikEksiltmeCanliModel : PageModel
             // End session - redirect to session list for simplicity
             // Clear persisted session data for this live session
             HttpContext.Session.Remove(GetSessionKey());
+            HttpContext.Session.Remove(GetSubmittedKey());
             return RedirectToPage("/ElektronikEksiltme");
+        }
+        else if (string.Equals(ActionName, "submit", StringComparison.OrdinalIgnoreCase))
+        {
+            // Record submitted bid for current round
+            var subJson = HttpContext.Session.GetString(GetSubmittedKey());
+            if (!string.IsNullOrEmpty(subJson))
+            {
+                SubmittedBids = JsonSerializer.Deserialize<List<SubmittedBid>>(subJson) ?? new List<SubmittedBid>();
+            }
+            SubmittedBids.RemoveAll(x => x.Round == CurrentRound);
+            SubmittedBids.Add(new SubmittedBid
+            {
+                Round = CurrentRound,
+                GrandTotal = GrandTotal,
+                Decrement = DecrementTotal,
+                Rank = CurrentRank
+            });
+            HttpContext.Session.SetString(GetSubmittedKey(), JsonSerializer.Serialize(SubmittedBids));
         }
 
         // Recompute per-round end based on current round
@@ -213,6 +242,14 @@ public class ElektronikEksiltmeCanliModel : PageModel
         public decimal PreviousUnitPrice { get; set; }
         public decimal ReOfferUnitPrice { get; set; }
         public decimal LineTotal => ReOfferUnitPrice * (decimal)Quantity;
+    }
+
+    public class SubmittedBid
+    {
+        public int Round { get; set; }
+        public decimal GrandTotal { get; set; }
+        public decimal Decrement { get; set; }
+        public int Rank { get; set; }
     }
 }
 
