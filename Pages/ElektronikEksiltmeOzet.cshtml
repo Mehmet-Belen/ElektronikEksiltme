@@ -1,0 +1,37 @@
+@page
+@model ElektronikEksiltmeOzetModel
+@{
+    ViewData["Title"] = "Oturum Özeti";
+    var tr = System.Globalization.CultureInfo.GetCultureInfo("tr-TR");
+}
+
+<div class="container py-4">
+    <h1>Oturum Özeti</h1>
+    <div class="card mt-3">
+        <div class="card-body">
+            <div><strong>İKN:</strong> @Model.Ihale.IKN</div>
+            <div><strong>İdare Adı:</strong> @Model.Ihale.AuthorityName</div>
+            <div><strong>İhale Adı:</strong> @Model.Ihale.TenderName</div>
+            <div><strong>Kısım Adı:</strong> @Model.Ihale.PartName</div>
+        </div>
+    </div>
+
+    <div class="summary mt-3">
+        <div><strong>Son Toplam Teklif:</strong> @Model.LastGrandTotal.ToString("N2", tr) ₺</div>
+        <div><strong>Son Toplam Eksiltme:</strong> @Model.LastDecrement.ToString("N2", tr) ₺</div>
+        <div><strong>Final Sıralamanız:</strong> @Model.FinalRank</div>
+    </div>
+
+    <div class="mt-4">
+        <a class="btn btn-primary" asp-page="/ElektronikEksiltme">Tekliflere İlişkin Bilgilere Dön</a>
+    </div>
+</div>
+
+<style>
+    .summary {
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        padding: 12px 16px;
+    }
+</style>

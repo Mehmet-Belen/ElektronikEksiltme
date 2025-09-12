@@ -3,6 +3,7 @@
 @{
     ViewData["Title"] = " Elektronik Eksiltme - Canlı Oturum";
     var tr = System.Globalization.CultureInfo.GetCultureInfo("tr-TR");
+    decimal previousDecrement = 0;
 }
 
 <h1 class="page-title">@ViewData["Title"]</h1>
@@ -54,11 +55,14 @@
                 {
                     foreach (var s in Model.SubmittedBids.OrderBy(x => x.Round))
                     {
+                        var thisRoundDecrement = s.Decrement - previousDecrement;
                         <li>
                             <div><strong>Tur @s.Round</strong></div>
                             <div>Toplam Teklif Tutarı: <strong>@s.GrandTotal.ToString("N2", tr) ₺</strong></div>
-                            <div>Yapılan Eksiltme Miktarı: <strong>@s.Decrement.ToString("N2", tr) ₺</strong></div>
+                            <div>Turda Yapılan Eksiltme: <strong>@thisRoundDecrement.ToString("N2", tr) ₺</strong></div>
+                            <div>Toplam Eksiltme Miktarı: <strong>@s.Decrement.ToString("N2", tr) ₺</strong></div>
                         </li>
+                        previousDecrement = s.Decrement; // bir sonraki tur için güncelle
                     }
                 }
                 else

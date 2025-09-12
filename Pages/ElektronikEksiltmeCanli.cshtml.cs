@@ -45,6 +45,7 @@ public class ElektronikEksiltmeCanliModel : PageModel
 
     public List<SubmittedBid> SubmittedBids { get; set; } = new();
 
+
     public void OnGet()
     {
         var entity = _db.IhaleBilgileri.FirstOrDefault(x => x.IhaleKN == (string.IsNullOrWhiteSpace(IKN) ? x.IhaleKN : IKN));
@@ -116,6 +117,13 @@ public class ElektronikEksiltmeCanliModel : PageModel
         TotalRounds = Math.Max(1, settings.RoundCount);
         if (CurrentRound <= 0) CurrentRound = 1;
 
+        // Ensure previously submitted bids are loaded so they remain visible after Next
+        var submittedJsonExisting = HttpContext.Session.GetString(GetSubmittedKey());
+        if (!string.IsNullOrEmpty(submittedJsonExisting))
+        {
+            SubmittedBids = JsonSerializer.Deserialize<List<SubmittedBid>>(submittedJsonExisting) ?? new List<SubmittedBid>();
+        }
+
         // Advance round if requested
         if (string.Equals(ActionName, "next", StringComparison.OrdinalIgnoreCase))
         {
@@ -126,11 +134,8 @@ public class ElektronikEksiltmeCanliModel : PageModel
         }
         else if (string.Equals(ActionName, "finish", StringComparison.OrdinalIgnoreCase))
         {
-            // End session - redirect to session list for simplicity
-            // Clear persisted session data for this live session
-            HttpContext.Session.Remove(GetSessionKey());
-            HttpContext.Session.Remove(GetSubmittedKey());
-            return RedirectToPage("/ElektronikEksiltme");
+            // Redirect to summary page; keep session so summary can read it and then clear
+            return RedirectToPage("/ElektronikEksiltmeOzet", new { ikn = IKN });
         }
         else if (string.Equals(ActionName, "submit", StringComparison.OrdinalIgnoreCase))
         {
@@ -192,6 +197,25 @@ public class ElektronikEksiltmeCanliModel : PageModel
                     Items[i].PreviousUnitPrice = newPrev;
                     Items[i].ReOfferUnitPrice = newPrev;
                 }
+            }
+
+            // If this was a submit action, store the computed totals for this round now
+            if (string.Equals(ActionName, "submit", StringComparison.OrdinalIgnoreCase))
+            {
+                var subJson2 = HttpContext.Session.GetString(GetSubmittedKey());
+                if (!string.IsNullOrEmpty(subJson2))
+                {
+                    SubmittedBids = JsonSerializer.Deserialize<List<SubmittedBid>>(subJson2) ?? new List<SubmittedBid>();
+                }
+                SubmittedBids.RemoveAll(x => x.Round == CurrentRound);
+                SubmittedBids.Add(new SubmittedBid
+                {
+                    Round = CurrentRound,
+                    GrandTotal = GrandTotal,
+                    Decrement = DecrementTotal,
+                    Rank = CurrentRank
+                });
+                HttpContext.Session.SetString(GetSubmittedKey(), JsonSerializer.Serialize(SubmittedBids));
             }
 
             // Persist current items for the live session
