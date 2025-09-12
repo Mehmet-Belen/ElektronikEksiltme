@@ -80,6 +80,7 @@
             <div class="alert alert-warning">
                 @ViewContext.ViewData.ModelState[string.Empty]?.Errors.FirstOrDefault()?.ErrorMessage</div>
         }
+                    <input type="hidden" id="min-step" data-value="@Model.MinDecrementStep" />
         <section class="items">
             <h2>Kalemlere İlişkin Teklif Bilgileri</h2>
             <table class="items-table">
@@ -346,7 +347,25 @@
         const decEl = document.getElementById('decrement-total');
         const quantities = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Items.ConvertAll(i => i.Quantity)));
         const prevPrices = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Items.ConvertAll(i => i.PreviousUnitPrice)));
-        function parseNum(v) { const n = parseFloat(v); return isNaN(n) ? 0 : n; }
+        const nextBtn = document.querySelector('button[name="ActionName"][value="next"]');
+        const minStepEl = document.getElementById('min-step');
+        function parseNumLocale(raw) {
+            let s = (raw ?? '').toString().trim();
+            if (!s) return 0;
+            s = s.replace(/\s/g, '');
+            const lastDot = s.lastIndexOf('.');
+            const lastComma = s.lastIndexOf(',');
+            if (lastDot >= 0 && lastComma >= 0) {
+                const commaIsDecimal = lastComma > lastDot;
+                const thousand = commaIsDecimal ? /\./g : /,/g;
+                const dec = commaIsDecimal ? /,/g : /\./g;
+                s = s.replace(thousand, '').replace(dec, '.');
+            } else if (lastComma >= 0) {
+                s = s.replace(/\./g, '').replace(/,/g, '.');
+            }
+            const n = parseFloat(s);
+            return isNaN(n) ? 0 : n;
+        }
         function formatTr(amount) {
             try { return amount.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
             catch { return amount.toFixed(2); }
@@ -357,15 +376,24 @@
                 const i = parseInt(td.getAttribute('data-index'));
                 const raw = document.querySelector(`input[data-index="${i}"]`).value;
                 const hasInput = raw !== undefined && raw !== null && raw !== '';
-                const val = hasInput ? parseNum(raw) : parseNum(prevPrices[i]);
-                const qty = parseNum(quantities[i]);
+                const val = hasInput ? parseNumLocale(raw) : Number(prevPrices[i]);
+                const qty = Number(quantities[i]);
                 const line = val * qty;
                 td.textContent = formatTr(line) + ' ₺';
                 grand += line;
-                prevGrand += parseNum(prevPrices[i]) * qty;
+                prevGrand += Number(prevPrices[i]) * qty;
             });
             grandTotalEl.textContent = formatTr(grand) + ' ₺';
-            decEl.textContent = formatTr(Math.max(0, prevGrand - grand)) + ' ₺';
+            const dec = Math.max(0, prevGrand - grand);
+            decEl.textContent = formatTr(dec) + ' ₺';
+
+            if (minStepEl && nextBtn) {
+                const minStep = parseFloat(minStepEl.getAttribute('data-value') || '0');
+                if (!isNaN(minStep) && minStep > 0) {
+                    nextBtn.disabled = dec < minStep;
+                    nextBtn.title = dec < minStep ? `Yapılan eksiltme en az ${formatTr(minStep)} ₺ olmalıdır.` : '';
+                }
+            }
         }
         inputs.forEach(inp => inp.addEventListener('input', recalc));
         recalc();

@@ -40,6 +40,8 @@ public class ElektronikEksiltmeCanliModel : PageModel
     public decimal GrandTotal => Items.Sum(i => i.LineTotal);
     public decimal DecrementTotal => Items.Sum(i => (i.PreviousUnitPrice - i.ReOfferUnitPrice) * (decimal)i.Quantity);
 
+    public decimal MinDecrementStep { get; set; }
+
     private string GetSessionKey() => $"EE:{IKN}:Items";
     private string GetSubmittedKey() => $"EE:{IKN}:Submitted";
 
@@ -124,15 +126,9 @@ public class ElektronikEksiltmeCanliModel : PageModel
             SubmittedBids = JsonSerializer.Deserialize<List<SubmittedBid>>(submittedJsonExisting) ?? new List<SubmittedBid>();
         }
 
-        // Advance round if requested
-        if (string.Equals(ActionName, "next", StringComparison.OrdinalIgnoreCase))
-        {
-            if (CurrentRound < TotalRounds)
-            {
-                CurrentRound++;
-            }
-        }
-        else if (string.Equals(ActionName, "finish", StringComparison.OrdinalIgnoreCase))
+        // Defer advancing round until after items are merged and validations run
+        bool requestNext = string.Equals(ActionName, "next", StringComparison.OrdinalIgnoreCase);
+        if (string.Equals(ActionName, "finish", StringComparison.OrdinalIgnoreCase))
         {
             // Redirect to summary page; keep session so summary can read it and then clear
             return RedirectToPage("/ElektronikEksiltmeOzet", new { ikn = IKN });
@@ -179,9 +175,23 @@ public class ElektronikEksiltmeCanliModel : PageModel
                     var raw = Request.Form[$"Items[{i}].ReOfferUnitPrice"].ToString();
                     if (!string.IsNullOrWhiteSpace(raw))
                     {
-                        // Normalize common formats: remove thousand separators and use '.' as decimal separator
-                        var normalized = raw.Replace(" ", "").Replace(".", "").Replace(',', '.');
-                        if (decimal.TryParse(normalized, System.Globalization.NumberStyles.AllowDecimalPoint, System.Globalization.CultureInfo.InvariantCulture, out var parsed))
+                        // Detect decimal separator by last occurrence; remove thousands
+                        var s = raw.Trim();
+                        int lastDot = s.LastIndexOf('.');
+                        int lastComma = s.LastIndexOf(',');
+                        if (lastDot >= 0 && lastComma >= 0)
+                        {
+                            bool commaIsDecimal = lastComma > lastDot;
+                            char thousand = commaIsDecimal ? '.' : ',';
+                            char dec = commaIsDecimal ? ',' : '.';
+                            s = s.Replace(thousand.ToString(), string.Empty).Replace(dec, '.');
+                        }
+                        else if (lastComma >= 0)
+                        {
+                            s = s.Replace('.', ' ').Replace(" ", string.Empty).Replace(',', '.');
+                        }
+                        // else: only dot or digits
+                        if (decimal.TryParse(s, System.Globalization.NumberStyles.AllowDecimalPoint, System.Globalization.CultureInfo.InvariantCulture, out var parsed))
                         {
                             posted = parsed;
                         }
@@ -207,11 +217,14 @@ public class ElektronikEksiltmeCanliModel : PageModel
             }
             Items = baseItems;
 
+            // Determine min decrement step from ihale or settings
+            MinDecrementStep = entity.AsgariFark ?? settings.MinDecrementStep;
+
             // Validate minimum decrement on submit
             if (string.Equals(ActionName, "submit", StringComparison.OrdinalIgnoreCase))
             {
                 var decrementNow = DecrementTotal;
-                var minStep = Math.Max(0m, settings.MinDecrementStep);
+                var minStep = Math.Max(0m, MinDecrementStep);
                 if (minStep > 0m && decrementNow < minStep)
                 {
                     ModelState.AddModelError(string.Empty, $"Yapılan eksiltme asgari fark aralığından (en az {minStep:N2} ₺) daha düşük olamaz.");
@@ -219,9 +232,21 @@ public class ElektronikEksiltmeCanliModel : PageModel
                 }
             }
 
-            // If advanced to next round, carry re-offer to previous price and reset input default
-            if (string.Equals(ActionName, "next", StringComparison.OrdinalIgnoreCase))
+            // If requested to advance, validate min decrement and then advance
+            if (requestNext)
             {
+                var minStep = Math.Max(0m, MinDecrementStep);
+                if (minStep > 0m && DecrementTotal < minStep)
+                {
+                    ModelState.AddModelError(string.Empty, $"Yapılan eksiltme asgari fark aralığından (en az {minStep:N2} ₺) daha düşük olamaz.");
+                    return Page();
+                }
+
+                if (CurrentRound < TotalRounds)
+                {
+                    CurrentRound++;
+                }
+
                 for (int i = 0; i < Items.Count; i++)
                 {
                     var newPrev = Items[i].ReOfferUnitPrice;
