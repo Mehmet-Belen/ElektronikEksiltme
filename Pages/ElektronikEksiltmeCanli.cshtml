@@ -75,6 +75,11 @@
 
     <form method="post">
         <input type="hidden" name="CurrentRound" value="@Model.CurrentRound" />
+        @if (!ViewContext.ViewData.ModelState.IsValid)
+        {
+            <div class="alert alert-warning">
+                @ViewContext.ViewData.ModelState[string.Empty]?.Errors.FirstOrDefault()?.ErrorMessage</div>
+        }
         <section class="items">
             <h2>Kalemlere İlişkin Teklif Bilgileri</h2>
             <table class="items-table">
@@ -99,8 +104,9 @@
                             <td>@Model.Items[i].Unit</td>
                             <td>@Model.Items[i].PreviousUnitPrice.ToString("N2", tr) ₺</td>
                             <td>
-                                <input type="number" step="0.01" min="0" name="Items[@i].ReOfferUnitPrice"
-                                    value="@Model.Items[i].ReOfferUnitPrice" class="input-price" data-index="@i" /> ₺
+                                <input type="text" inputmode="decimal" pattern="[0-9]+([\.,][0-9]{1,2})?"
+                                    name="Items[@i].ReOfferUnitPrice" value="@Model.Items[i].ReOfferUnitPrice"
+                                    class="input-price" data-index="@i" /> ₺
                             </td>
                             <td class="line-total" data-index="@i">@Model.Items[i].LineTotal.ToString("N2", tr) ₺</td>
                         </tr>

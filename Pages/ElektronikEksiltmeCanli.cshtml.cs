@@ -175,6 +175,25 @@ public class ElektronikEksiltmeCanliModel : PageModel
                 for (int i = 0; i < baseItems.Count; i++)
                 {
                     decimal posted = Items[i]?.ReOfferUnitPrice ?? 0m;
+                    // Try to parse culture-agnostic using raw form value first
+                    var raw = Request.Form[$"Items[{i}].ReOfferUnitPrice"].ToString();
+                    if (!string.IsNullOrWhiteSpace(raw))
+                    {
+                        // Normalize common formats: remove thousand separators and use '.' as decimal separator
+                        var normalized = raw.Replace(" ", "").Replace(".", "").Replace(',', '.');
+                        if (decimal.TryParse(normalized, System.Globalization.NumberStyles.AllowDecimalPoint, System.Globalization.CultureInfo.InvariantCulture, out var parsed))
+                        {
+                            posted = parsed;
+                        }
+                        else
+                        {
+                            // Try Turkish culture as a fallback
+                            if (decimal.TryParse(raw, System.Globalization.NumberStyles.Number, System.Globalization.CultureInfo.GetCultureInfo("tr-TR"), out var trParsed))
+                            {
+                                posted = trParsed;
+                            }
+                        }
+                    }
                     // Treat non-positive or empty as "no change" -> use previous unit price
                     if (posted <= 0m)
                     {
@@ -187,6 +206,18 @@ public class ElektronikEksiltmeCanliModel : PageModel
                 }
             }
             Items = baseItems;
+
+            // Validate minimum decrement on submit
+            if (string.Equals(ActionName, "submit", StringComparison.OrdinalIgnoreCase))
+            {
+                var decrementNow = DecrementTotal;
+                var minStep = Math.Max(0m, settings.MinDecrementStep);
+                if (minStep > 0m && decrementNow < minStep)
+                {
+                    ModelState.AddModelError(string.Empty, $"Yapılan eksiltme asgari fark aralığından (en az {minStep:N2} ₺) daha düşük olamaz.");
+                    return Page();
+                }
+            }
 
             // If advanced to next round, carry re-offer to previous price and reset input default
             if (string.Equals(ActionName, "next", StringComparison.OrdinalIgnoreCase))
