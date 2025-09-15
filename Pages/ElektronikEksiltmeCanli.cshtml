@@ -80,7 +80,31 @@
             <div class="alert alert-warning">
                 @ViewContext.ViewData.ModelState[string.Empty]?.Errors.FirstOrDefault()?.ErrorMessage</div>
         }
-                    <input type="hidden" id="min-step" data-value="@Model.MinDecrementStep" />
+        <input type="hidden" id="min-step" data-value="@Model.MinDecrementStep" />
+        @{
+            // Current round per-round decrement as computed for display above
+            decimal currentRoundDecForBaseline = Model.DecrementTotal;
+            if (Model.SubmittedBids != null && Model.SubmittedBids.Count > 0)
+            {
+                var ordered2 = Model.SubmittedBids.OrderBy(x => x.Round).ToList();
+                decimal prevRoundsTotal2 = 0m;
+                foreach (var sb in ordered2)
+                {
+                    if (sb.Round < Model.CurrentRound)
+                    {
+                        prevRoundsTotal2 = sb.Decrement;
+                    }
+                    else if (sb.Round == Model.CurrentRound)
+                    {
+                        currentRoundDecForBaseline = sb.Decrement - prevRoundsTotal2;
+                        break;
+                    }
+                }
+            }
+            // Baseline grand total for this round = current grand + per-round decrement
+            decimal roundBaselineGrand = Model.GrandTotal + currentRoundDecForBaseline;
+        }
+        <input type="hidden" id="prev-grand" data-value="@roundBaselineGrand" />
         <section class="items">
             <h2>Kalemlere İlişkin Teklif Bilgileri</h2>
             <table class="items-table">
@@ -107,7 +131,7 @@
                             <td>
                                 <input type="text" inputmode="decimal" pattern="[0-9]+([\.,][0-9]{1,2})?"
                                     name="Items[@i].ReOfferUnitPrice" value="@Model.Items[i].ReOfferUnitPrice"
-                                    class="input-price" data-index="@i" /> ₺
+                                    class="input-price" data-index="@i" data-prev="@Model.Items[i].PreviousUnitPrice" /> ₺
                             </td>
                             <td class="line-total" data-index="@i">@Model.Items[i].LineTotal.ToString("N2", tr) ₺</td>
                         </tr>
@@ -122,7 +146,27 @@
                     Toplam Teklif Tutarı: <strong id="grand-total">@Model.GrandTotal.ToString("N2", tr) ₺</strong>
                 </div>
                 <div>
-                    Eksiltme Tutarı: <strong id="decrement-total">@Model.DecrementTotal.ToString("N2", tr) ₺</strong>
+                    @{
+                        decimal currentRoundDec = Model.DecrementTotal;
+                        if (Model.SubmittedBids != null && Model.SubmittedBids.Count > 0)
+                        {
+                            var ordered = Model.SubmittedBids.OrderBy(x => x.Round).ToList();
+                            decimal prevRoundsTotal = 0m;
+                            foreach (var sb in ordered)
+                            {
+                                if (sb.Round < Model.CurrentRound)
+                                {
+                                    prevRoundsTotal = sb.Decrement; // cumulatif toplam önceki turun son değeri
+                                }
+                                else if (sb.Round == Model.CurrentRound)
+                                {
+                                    currentRoundDec = sb.Decrement - prevRoundsTotal;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    Eksiltme Tutarı: <strong id="decrement-total">@currentRoundDec.ToString("N2", tr) ₺</strong>
                 </div>
             </div>
             <div>
@@ -346,9 +390,9 @@
         const grandTotalEl = document.getElementById('grand-total');
         const decEl = document.getElementById('decrement-total');
         const quantities = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Items.ConvertAll(i => i.Quantity)));
-        const prevPrices = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Items.ConvertAll(i => i.PreviousUnitPrice)));
         const nextBtn = document.querySelector('button[name="ActionName"][value="next"]');
         const minStepEl = document.getElementById('min-step');
+        const prevGrandEl = document.getElementById('prev-grand');
         function parseNumLocale(raw) {
             let s = (raw ?? '').toString().trim();
             if (!s) return 0;
@@ -371,20 +415,22 @@
             catch { return amount.toFixed(2); }
         }
         function recalc() {
-            let grand = 0, prevGrand = 0;
+            let grand = 0;
             document.querySelectorAll('.line-total').forEach((td) => {
                 const i = parseInt(td.getAttribute('data-index'));
-                const raw = document.querySelector(`input[data-index="${i}"]`).value;
+                const inputEl = document.querySelector(`input[data-index="${i}"]`);
+                const raw = inputEl.value;
                 const hasInput = raw !== undefined && raw !== null && raw !== '';
-                const val = hasInput ? parseNumLocale(raw) : Number(prevPrices[i]);
+                const prev = parseFloat(inputEl.getAttribute('data-prev') || '0');
+                const val = hasInput ? parseNumLocale(raw) : prev;
                 const qty = Number(quantities[i]);
                 const line = val * qty;
                 td.textContent = formatTr(line) + ' ₺';
                 grand += line;
-                prevGrand += Number(prevPrices[i]) * qty;
             });
             grandTotalEl.textContent = formatTr(grand) + ' ₺';
-            const dec = Math.max(0, prevGrand - grand);
+            const baseline = parseFloat(prevGrandEl?.getAttribute('data-value') || '0');
+            const dec = Math.max(0, baseline - grand);
             decEl.textContent = formatTr(dec) + ' ₺';
 
             if (minStepEl && nextBtn) {
@@ -396,6 +442,5 @@
             }
         }
         inputs.forEach(inp => inp.addEventListener('input', recalc));
-        recalc();
     })();
 </script>
