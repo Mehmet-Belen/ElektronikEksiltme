@@ -190,6 +190,29 @@
                 }
             </div>
         </section>
+
+        <section class="live-bids" style="margin-top:14px;">
+            <h2>Canlı Teklif Tablosu (Tur @Model.CurrentRound)</h2>
+            <div class="table-responsive">
+                <table class="table table-sm table-striped" id="live-bids-table">
+                    <thead>
+                        <tr>
+                            <th style="width:54px;">Sıra</th>
+                            <th>Kullanıcı</th>
+                            <th style="width:80px;">Tur</th>
+                            <th style="width:200px;">Toplam Teklif</th>
+                            <th style="width:200px;">Tur Eksiltme</th>
+                            <th style="width:160px;">Zaman</th>
+                        </tr>
+                    </thead>
+                    <tbody id="live-bids-body">
+                        <tr class="placeholder">
+                            <td colspan="6">Henüz canlı teklif yok</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
     </form>
 </div>
 
@@ -396,6 +419,37 @@
         const ikn = '@Model.IKN';
         const sessionCountEl = document.getElementById('session-count');
         const bidsListEl = document.getElementById('bids-list');
+        const liveBody = document.getElementById('live-bids-body');
+        const trFmt = new Intl.NumberFormat('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+        // In-memory state: latest bid per user per round
+        const bidsByRound = {};
+        function renderLeaderboard(round) {
+            if (!liveBody) return;
+            const map = bidsByRound[round] || {};
+            const rows = Object.values(map).sort((a, b) => {
+                if (a.grandTotal !== b.grandTotal) return a.grandTotal - b.grandTotal;
+                return new Date(a.timestamp) - new Date(b.timestamp);
+            });
+            liveBody.innerHTML = '';
+            if (rows.length === 0) {
+                const tr = document.createElement('tr');
+                tr.className = 'placeholder';
+                tr.innerHTML = '<td colspan="6">Henüz canlı teklif yok</td>';
+                liveBody.appendChild(tr);
+                return;
+            }
+            rows.forEach((r, idx) => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `<td>${idx + 1}</td>
+                                <td>${(r.username || 'Kullanıcı')} (#${r.userId || ''})</td>
+                                <td>${r.round}</td>
+                                <td><strong>${trFmt.format(Number(r.grandTotal))} ₺</strong></td>
+                                <td>${trFmt.format(Number(r.decrement))} ₺</td>
+                                <td>${new Date(r.timestamp).toLocaleTimeString('tr-TR')}</td>`;
+                liveBody.appendChild(tr);
+            });
+        }
         if (window.signalR) {
             const connection = new signalR.HubConnectionBuilder()
                 .withUrl('/auctionHub')
@@ -416,6 +470,10 @@
                                     <div>Turda Yapılan Eksiltme: <strong>${Number(p.decrement).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₺</strong></div>
                                     <div>Anlık Sıralama (gönderen): <strong>${p.rank}</strong></div>`;
                     bidsListEl?.prepend(li);
+                    // Update leaderboard state and render
+                    bidsByRound[p.round] = bidsByRound[p.round] || {};
+                    bidsByRound[p.round][p.userId || ('u_' + Math.random())] = p;
+                    renderLeaderboard(p.round);
                 } catch { }
             });
 
