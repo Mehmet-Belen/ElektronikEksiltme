@@ -79,6 +79,7 @@
     </section>
 
     <form method="post">
+        <input type="hidden" name="ikn" value="@Model.IKN" />
         <input type="hidden" name="CurrentRound" value="@Model.CurrentRound" />
         @if (!ViewContext.ViewData.ModelState.IsValid)
         {
@@ -450,7 +451,11 @@
                 liveBody.appendChild(tr);
             });
         }
-        if (window.signalR) {
+        function startSessionConn() {
+            if (!window.signalR || !window.signalR.HubConnectionBuilder) {
+                setTimeout(startSessionConn, 150);
+                return;
+            }
             const connection = new signalR.HubConnectionBuilder()
                 .withUrl('/auctionHub')
                 .withAutomaticReconnect()
@@ -463,14 +468,12 @@
             connection.on('BidSubmitted', (p) => {
                 if (!p || p.ikn !== ikn) return;
                 try {
-                    // Append/update a simple round row for visibility
                     const li = document.createElement('li');
                     li.innerHTML = `<div><strong>Tur ${p.round}</strong> — <em>${(p.username || 'Kullanıcı')} (#${p.userId || ''})</em></div>
                                     <div>Toplam Teklif Tutarı: <strong>${Number(p.grandTotal).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₺</strong></div>
                                     <div>Turda Yapılan Eksiltme: <strong>${Number(p.decrement).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₺</strong></div>
                                     <div>Anlık Sıralama (gönderen): <strong>${p.rank}</strong></div>`;
                     bidsListEl?.prepend(li);
-                    // Update leaderboard state and render
                     bidsByRound[p.round] = bidsByRound[p.round] || {};
                     bidsByRound[p.round][p.userId || ('u_' + Math.random())] = p;
                     renderLeaderboard(p.round);
@@ -478,13 +481,13 @@
             });
 
             connection.start().then(() => {
-                // identify already done in layout on that page load, but safe to do again
                 const username = '@sessUsername';
                 const userId = '@sessUserId';
                 connection.invoke('Identify', parseInt(userId || '0'), username || '');
                 connection.invoke('JoinSession', ikn);
             }).catch(err => console.error(err));
         }
+        startSessionConn();
         const inputs = document.querySelectorAll('.input-price');
         const grandTotalEl = document.getElementById('grand-total');
         const decEl = document.getElementById('decrement-total');
