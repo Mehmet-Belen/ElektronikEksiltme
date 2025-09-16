@@ -47,6 +47,7 @@ namespace WebApplication1.Pages
             if (user != null)
             {
                 HttpContext.Session.SetString("Username", user.Username);
+                HttpContext.Session.SetInt32("UserId", user.Id);
                 return RedirectToPage("/Index");
             }
             else

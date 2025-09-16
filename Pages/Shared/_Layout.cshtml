@@ -11,7 +11,7 @@
     <title>@ViewData["Title"] - WebApplication1</title>
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
-    <li nk rel="stylesheet" href="~/WebApplication1.styles.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/WebApplication1.styles.css" asp-append-version="true" />
 </head>
 
 <body>
@@ -21,11 +21,13 @@
                 <a class="navbar-brand d-flex align-items-center" asp-area="" asp-page="/Index"></a>
                 <img src="~/images/kik-logo.jpg" alt="KIK Logo" style="height:32px; margin-right:8px;" />
                 <img src="~/images/ekap-logo.jpg" alt="EKAP Logo" style="height:32px; margin-right:8px;" />
-                </button class="navbar-t             aria-controls=" navbarSupportedContent" aria-expanded="false"
-                    aria-label="Menüyü Aç/Kapat">
-                <span class="navbar-toggler-icon"></span>
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse"
+                    data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent"
+                    aria-expanded="false" aria-label="Menüyü Aç/Kapat">
+                    <span class="navbar-toggler-icon"></span>
                 </button>
-                <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
+                <div id="navbarSupportedContent"
+                    class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
                     <ul class="navbar-nav flex-grow-1">
                         <li class="nav-item">
                             <a class="nav-link text-dark" asp-area="" asp-page="/Index">Ana Sayfa</a>
@@ -55,6 +57,9 @@
                                 <a class="nav-link text-dark" asp-area="" asp-page="/Admin/Settings">Yönetim</a>
                             </li>
                         }
+                        <li class="nav-item ms-3">
+                            <span class="badge bg-primary" id="online-count" title="Çevrimiçi kullanıcı sayısı">0</span>
+                        </li>
                     </ul>
                 </div>
             </div>
@@ -73,12 +78,62 @@
     </footer>
 
 
-    <sc ript src="~/lib/jquery/dist/jquery.min.js">
-        </script>
-        <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
-        <script src="~/js/site.js" asp-append-version="true"></script>
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        (function loadSignalR() {
+            var urls = [
+                '/lib/signalr/signalr.min.js',
+                'https://cdn.jsdelivr.net/npm/%40microsoft/signalr@8.0.8/dist/browser/signalr.min.js',
+                'https://unpkg.com/%40microsoft/signalr@8.0.8/dist/browser/signalr.min.js'
+            ];
+            function tryNext(i) {
+                if (i >= urls.length) return;
+                var s = document.createElement('script');
+                s.src = urls[i];
+                s.async = true;
+                s.crossOrigin = 'anonymous';
+                s.referrerPolicy = 'no-referrer';
+                s.onload = function () { console.debug('SignalR loaded from', urls[i]); };
+                s.onerror = function () { console.warn('Failed to load SignalR from', urls[i]); tryNext(i + 1); };
+                document.head.appendChild(s);
+            }
+            if (!window.signalR) tryNext(0);
+        })();
+    </script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
 
-        @await RenderSectionAsync("Scripts", required: false)
+    <script>
+        (function () {
+            const username = '@(Context.Session.GetString("Username") ?? "")';
+            const userId = '@(Context.Session.GetInt32("UserId")?.ToString() ?? "0")';
+            const onlineEl = document.getElementById('online-count');
+            function startConn() {
+                if (!window.signalR || !window.signalR.HubConnectionBuilder) {
+                    setTimeout(startConn, 150);
+                    return;
+                }
+                const conn = new signalR.HubConnectionBuilder().withUrl('/auctionHub').withAutomaticReconnect().build();
+                conn.on('OnlineCountUpdated', function (count) {
+                    if (onlineEl) onlineEl.textContent = count;
+                    console.debug('OnlineCountUpdated', count);
+                });
+                conn.onreconnected(function () { console.debug('SignalR reconnected'); });
+                conn.onclose(function () { console.warn('SignalR disconnected'); });
+                conn.start().then(function () {
+                    console.debug('SignalR connected');
+                    conn.invoke('Identify', parseInt(userId || '0'), username || '');
+                    return conn.invoke('GetOnlineCount');
+                }).then(function (count) {
+                    if (onlineEl && typeof count === 'number') onlineEl.textContent = count;
+                    console.debug('Initial online count', count);
+                }).catch(function (err) { console.error(err); });
+            }
+            startConn();
+        })();
+    </script>
+
+    @await RenderSectionAsync("Scripts", required: false)
 </body>
 
 </html>

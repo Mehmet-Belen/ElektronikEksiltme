@@ -1,6 +1,7 @@
 using WebApplication1.Data;
 using Microsoft.EntityFrameworkCore;
 using WebApplication1.Services;
+using WebApplication1.Hubs;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -21,11 +22,22 @@ builder.Services.AddSession(options =>
     options.Cookie.IsEssential = true;
 });
 
+builder.Services.AddCors(options =>
+{
+    options.AddDefaultPolicy(policy =>
+    {
+        policy.AllowAnyHeader()
+              .AllowAnyMethod()
+              .AllowAnyOrigin(); // demo için, üretimde origin’i kısıtla
+    });
+});
+
 builder.Services.AddSingleton<IAuctionSettingsService, AuctionSettingsService>();
 
 
 // Add services to the container.
 builder.Services.AddRazorPages();
+builder.Services.AddSignalR();
 
 var app = builder.Build();
 
@@ -37,15 +49,18 @@ if (!app.Environment.IsDevelopment())
     app.UseHsts();
 }
 
-app.UseHttpsRedirection();
+//app.UseHttpsRedirection();
 app.UseStaticFiles();       //static files      //wwwroot               
 
 app.UseSession();
 
 app.UseRouting();
 
+app.UseCors();
+
 app.UseAuthorization();
 
 app.MapRazorPages();
+app.MapHub<AuctionHub>("/auctionHub");
 
 app.Run();

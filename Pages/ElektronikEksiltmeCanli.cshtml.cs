@@ -7,16 +7,20 @@ using WebApplication1.Data;
 using WebApplication1.Services;
 using WebApplication1.Models;
 using System.Text.Json;
+using Microsoft.AspNetCore.SignalR;
+using WebApplication1.Hubs;
 
 public class ElektronikEksiltmeCanliModel : PageModel
 {
     private readonly AppDbContext _db;
     private readonly IAuctionSettingsService _settingsService;
+    private readonly IHubContext<AuctionHub> _hubContext;
 
-    public ElektronikEksiltmeCanliModel(AppDbContext db, IAuctionSettingsService settingsService)
+    public ElektronikEksiltmeCanliModel(AppDbContext db, IAuctionSettingsService settingsService, IHubContext<AuctionHub> hubContext)
     {
         _db = db;
         _settingsService = settingsService;
+        _hubContext = hubContext;
     }
     [BindProperty(SupportsGet = true, Name = "ikn")]
     public string IKN { get; set; } = string.Empty;
@@ -41,6 +45,9 @@ public class ElektronikEksiltmeCanliModel : PageModel
     public decimal DecrementTotal => Items.Sum(i => (i.PreviousUnitPrice - i.ReOfferUnitPrice) * (decimal)i.Quantity);
 
     public decimal MinDecrementStep { get; set; }
+
+    public string SessionUsername { get; set; } = string.Empty;
+    public int SessionUserId { get; set; }
 
 
     private decimal GetPerRoundDecrement()
@@ -73,6 +80,8 @@ public class ElektronikEksiltmeCanliModel : PageModel
 
     public void OnGet()
     {
+        SessionUsername = HttpContext.Session.GetString("Username") ?? string.Empty;
+        SessionUserId = HttpContext.Session.GetInt32("UserId") ?? 0;
         var entity = _db.IhaleBilgileri.FirstOrDefault(x => x.IhaleKN == (string.IsNullOrWhiteSpace(IKN) ? x.IhaleKN : IKN));
         if (entity == null)
         {
@@ -118,7 +127,7 @@ public class ElektronikEksiltmeCanliModel : PageModel
         }
     }
 
-    public IActionResult OnPost()
+    public async Task<IActionResult> OnPost()
     {
         var entity = _db.IhaleBilgileri.FirstOrDefault(x => x.IhaleKN == (string.IsNullOrWhiteSpace(IKN) ? x.IhaleKN : IKN));
         if (entity != null)
@@ -294,6 +303,22 @@ public class ElektronikEksiltmeCanliModel : PageModel
                     Rank = CurrentRank
                 });
                 HttpContext.Session.SetString(GetSubmittedKey(), JsonSerializer.Serialize(SubmittedBids));
+
+                // Broadcast real-time event
+                var username = HttpContext.Session.GetString("Username") ?? string.Empty;
+                var userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+                await _hubContext.Clients.Group(AuctionHub.GroupName(IKN ?? string.Empty))
+                    .SendAsync("BidSubmitted", new
+                    {
+                        ikn = IKN,
+                        userId,
+                        username,
+                        round = CurrentRound,
+                        grandTotal = GrandTotal,
+                        decrement = cumulativeNow,
+                        rank = CurrentRank,
+                        timestamp = DateTime.UtcNow
+                    });
             }
 
             // Persist current items for the live session

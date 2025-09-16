@@ -4,6 +4,8 @@
     ViewData["Title"] = " Elektronik Eksiltme - Canlı Oturum";
     var tr = System.Globalization.CultureInfo.GetCultureInfo("tr-TR");
     decimal previousDecrement = 0;
+    var sessUsername = Model.SessionUsername;
+    var sessUserId = Model.SessionUserId;
 }
 
 <h1 class="page-title">@ViewData["Title"]</h1>
@@ -49,8 +51,11 @@
                 <span class="rank-number">@Model.CurrentRank</span>
                 <span class="rank-label">Sıralamanız</span>
             </div>
+            <div class="text-end" style="margin-bottom:6px;font-size:.9rem;">
+                Oturum Katılımcıları: <strong id="session-count">1</strong>
+            </div>
             <div class="submitted-bids-title">Verilen Tekliflere Ait Bilgiler</div>
-            <ul class="submitted-bids-list">
+            <ul class="submitted-bids-list" id="bids-list">
                 @if (Model.SubmittedBids != null && Model.SubmittedBids.Count > 0)
                 {
                     foreach (var s in Model.SubmittedBids.OrderBy(x => x.Round))
@@ -355,6 +360,7 @@
     }
 </style>
 
+<script src="https://cdn.jsdelivr.net/npm/%40microsoft/signalr@8.0.8/dist/browser/signalr.min.js"></script>
 <script>
     (function () {
         const roundEnd = new Date('@Model.RoundEnd.ToString("o")');
@@ -386,6 +392,41 @@
     })();
 
     (function () {
+        // SignalR client for real-time bids and participants count
+        const ikn = '@Model.IKN';
+        const sessionCountEl = document.getElementById('session-count');
+        const bidsListEl = document.getElementById('bids-list');
+        if (window.signalR) {
+            const connection = new signalR.HubConnectionBuilder()
+                .withUrl('/auctionHub')
+                .withAutomaticReconnect()
+                .build();
+
+            connection.on('SessionParticipantsUpdated', (count) => {
+                if (sessionCountEl) sessionCountEl.textContent = count;
+            });
+
+            connection.on('BidSubmitted', (p) => {
+                if (!p || p.ikn !== ikn) return;
+                try {
+                    // Append/update a simple round row for visibility
+                    const li = document.createElement('li');
+                    li.innerHTML = `<div><strong>Tur ${p.round}</strong> — <em>${(p.username || 'Kullanıcı')} (#${p.userId || ''})</em></div>
+                                    <div>Toplam Teklif Tutarı: <strong>${Number(p.grandTotal).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₺</strong></div>
+                                    <div>Turda Yapılan Eksiltme: <strong>${Number(p.decrement).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₺</strong></div>
+                                    <div>Anlık Sıralama (gönderen): <strong>${p.rank}</strong></div>`;
+                    bidsListEl?.prepend(li);
+                } catch { }
+            });
+
+            connection.start().then(() => {
+                // identify already done in layout on that page load, but safe to do again
+                const username = '@sessUsername';
+                const userId = '@sessUserId';
+                connection.invoke('Identify', parseInt(userId || '0'), username || '');
+                connection.invoke('JoinSession', ikn);
+            }).catch(err => console.error(err));
+        }
         const inputs = document.querySelectorAll('.input-price');
         const grandTotalEl = document.getElementById('grand-total');
         const decEl = document.getElementById('decrement-total');
@@ -442,5 +483,7 @@
             }
         }
         inputs.forEach(inp => inp.addEventListener('input', recalc));
+
+
     })();
 </script>
