@@ -20,6 +20,14 @@
         <div><strong>Son Toplam Teklif:</strong> @Model.LastGrandTotal.ToString("N2", tr) ₺</div>
         <div><strong>Son Toplam Eksiltme:</strong> @Model.LastDecrement.ToString("N2", tr) ₺</div>
         <div><strong>Final Sıralamanız:</strong> @Model.FinalRank</div>
+        @if (Model.DidWin)
+        {
+            <div style="margin-top:6px;" class="alert alert-success">Eksiltme sonucunda ihaleyi siz kazandınız.</div>
+        }
+        else
+        {
+            <div style="margin-top:6px;" class="alert alert-secondary">Eksiltme sonucunda ihaleyi kazanamadınız.</div>
+        }
     </div>
 
     <div class="mt-4">

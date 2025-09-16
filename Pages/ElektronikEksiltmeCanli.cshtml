@@ -450,10 +450,10 @@
                                 <td>${new Date(r.timestamp).toLocaleTimeString('tr-TR')}</td>`;
                 liveBody.appendChild(tr);
             });
-            // Update rank badge based on leaderboard
+            // Update rank badge based on leaderboard; '-' if no bids yet
             const myUserId = Number('@Model.SessionUserId');
             const myIdx = rows.findIndex(x => Number(x.userId) === myUserId);
-            const rank = myIdx >= 0 ? (myIdx + 1) : rows.length;
+            const rank = rows.length === 0 ? '-' : (myIdx >= 0 ? (myIdx + 1) : rows.length);
             const rankEl = document.querySelector('.rank-number');
             if (rankEl) rankEl.textContent = rank;
         }

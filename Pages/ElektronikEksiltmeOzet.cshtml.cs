@@ -19,6 +19,7 @@ public class ElektronikEksiltmeOzetModel : PageModel
     public decimal LastGrandTotal { get; set; }
     public decimal LastDecrement { get; set; }
     public int FinalRank { get; set; }
+    public bool DidWin { get; set; }
 
     public void OnGet()
     {
@@ -40,12 +41,31 @@ public class ElektronikEksiltmeOzetModel : PageModel
             var list = System.Text.Json.JsonSerializer.Deserialize<List<ElektronikEksiltmeCanliModel.SubmittedBid>>(json) ?? new();
             if (list.Count > 0)
             {
-                var last = list.OrderByDescending(x => x.Round).First();
-                LastGrandTotal = last.GrandTotal;
-                LastDecrement = last.Decrement;
-                FinalRank = last.Rank;
+                // Determine final ranking based on latest round leaderboard from hub snapshots
+                int latestRound;
+                var board = WebApplication1.Hubs.AuctionHub.GetLatestRoundLeaderboard(IKN, out latestRound);
+                var myUserId = HttpContext.Session.GetInt32("UserId") ?? 0;
+                if (board != null && board.Length > 0)
+                {
+                    var idx = System.Array.FindIndex(board, b => b.UserId == myUserId);
+                    FinalRank = idx >= 0 ? (idx + 1) : board.Length;
+                    if (idx >= 0)
+                    {
+                        LastGrandTotal = board[idx].GrandTotal;
+                        LastDecrement = board[idx].Decrement;
+                    }
+                }
+                else
+                {
+                    var last = list.OrderByDescending(x => x.Round).First();
+                    LastGrandTotal = last.GrandTotal;
+                    LastDecrement = last.Decrement;
+                    FinalRank = last.Rank;
+                }
             }
         }
+
+        DidWin = FinalRank == 1;
 
         // Clear session after reading summary
         HttpContext.Session.Remove($"EE:{IKN}:Items");

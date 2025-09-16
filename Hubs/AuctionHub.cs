@@ -126,6 +126,24 @@ namespace WebApplication1.Hubs
             }
             return Task.FromResult(System.Array.Empty<BidSnapshot>());
         }
+
+        public static BidSnapshot[] GetLatestRoundLeaderboard(string ikn, out int latestRound)
+        {
+            latestRound = 0;
+            if (string.IsNullOrWhiteSpace(ikn)) return System.Array.Empty<BidSnapshot>();
+            var prefix = GroupName(ikn) + ":";
+            var entries = BidsByIknRound.Where(kv => kv.Key.StartsWith(prefix)).ToList();
+            if (entries.Count == 0) return System.Array.Empty<BidSnapshot>();
+            latestRound = entries
+                .Select(kv => int.TryParse(kv.Key.Substring(prefix.Length), out var r) ? r : 0)
+                .Max();
+            var key = prefix + latestRound.ToString();
+            if (BidsByIknRound.TryGetValue(key, out var map))
+            {
+                return map.Values.OrderBy(b => b.GrandTotal).ThenBy(b => b.Timestamp).ToArray();
+            }
+            return System.Array.Empty<BidSnapshot>();
+        }
     }
 }
 
