@@ -55,7 +55,7 @@
                 {
                     foreach (var s in Model.SubmittedBids.OrderBy(x => x.Round))
                     {
-                        var thisRoundDecrement = s.Decrement - previousDecrement;
+                        var thisRoundDecrement = Math.Max(0m, s.Decrement - previousDecrement);
                         <li>
                             <div><strong>Tur @s.Round</strong></div>
                             <div>Toplam Teklif Tutarı: <strong>@s.GrandTotal.ToString("N2", tr) ₺</strong></div>
@@ -160,7 +160,7 @@
                                 }
                                 else if (sb.Round == Model.CurrentRound)
                                 {
-                                    currentRoundDec = sb.Decrement - prevRoundsTotal;
+                                    currentRoundDec = Math.Max(0m, sb.Decrement - prevRoundsTotal);
                                     break;
                                 }
                             }

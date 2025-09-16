@@ -42,6 +42,29 @@ public class ElektronikEksiltmeCanliModel : PageModel
 
     public decimal MinDecrementStep { get; set; }
 
+
+    private decimal GetPerRoundDecrement()
+    {
+        // Calculate per-round decrement by subtracting previous round's cumulative decrement
+        // from the current cumulative decrement. Falls back to current decrement if no history exists.
+        decimal cumulativeNow = DecrementTotal;
+        if (SubmittedBids == null || SubmittedBids.Count == 0)
+        {
+            return Math.Max(0m, cumulativeNow);
+        }
+        var previousRounds = SubmittedBids
+            .Where(x => x.Round < CurrentRound)
+            .OrderBy(x => x.Round)
+            .ToList();
+        if (previousRounds.Count == 0)
+        {
+            return Math.Max(0m, cumulativeNow);
+        }
+        var lastPrevCumulative = previousRounds.Last().Decrement;
+        var perRound = cumulativeNow - lastPrevCumulative;
+        return perRound < 0m ? 0m : perRound;
+    }
+
     private string GetSessionKey() => $"EE:{IKN}:Items";
     private string GetSubmittedKey() => $"EE:{IKN}:Submitted";
 
@@ -133,24 +156,7 @@ public class ElektronikEksiltmeCanliModel : PageModel
             // Redirect to summary page; keep session so summary can read it and then clear
             return RedirectToPage("/ElektronikEksiltmeOzet", new { ikn = IKN });
         }
-        else if (string.Equals(ActionName, "submit", StringComparison.OrdinalIgnoreCase))
-        {
-            // Record submitted bid for current round
-            var subJson = HttpContext.Session.GetString(GetSubmittedKey());
-            if (!string.IsNullOrEmpty(subJson))
-            {
-                SubmittedBids = JsonSerializer.Deserialize<List<SubmittedBid>>(subJson) ?? new List<SubmittedBid>();
-            }
-            SubmittedBids.RemoveAll(x => x.Round == CurrentRound);
-            SubmittedBids.Add(new SubmittedBid
-            {
-                Round = CurrentRound,
-                GrandTotal = GrandTotal,
-                Decrement = DecrementTotal,
-                Rank = CurrentRank
-            });
-            HttpContext.Session.SetString(GetSubmittedKey(), JsonSerializer.Serialize(SubmittedBids));
-        }
+        // Note: Do not record submit here; it must occur only AFTER validations and merges below
 
         // Recompute per-round end based on current round
         if (entity != null)
@@ -204,14 +210,15 @@ public class ElektronikEksiltmeCanliModel : PageModel
                             }
                         }
                     }
-                    // Treat non-positive or empty as "no change" -> use previous unit price
+                    // Treat non-positive or empty as no change
                     if (posted <= 0m)
                     {
                         baseItems[i].ReOfferUnitPrice = baseItems[i].PreviousUnitPrice;
                     }
                     else
                     {
-                        baseItems[i].ReOfferUnitPrice = posted;
+                        // Do not allow increasing unit price; cap to previous unit price
+                        baseItems[i].ReOfferUnitPrice = Math.Min(posted, baseItems[i].PreviousUnitPrice);
                     }
                 }
             }
@@ -220,10 +227,10 @@ public class ElektronikEksiltmeCanliModel : PageModel
             // Determine min decrement step from ihale or settings
             MinDecrementStep = entity.AsgariFark ?? settings.MinDecrementStep;
 
-            // Validate minimum decrement on submit
+            // Validate minimum decrement on submit (per-round basis)
             if (string.Equals(ActionName, "submit", StringComparison.OrdinalIgnoreCase))
             {
-                var decrementNow = DecrementTotal;
+                var decrementNow = GetPerRoundDecrement();
                 var minStep = Math.Max(0m, MinDecrementStep);
                 if (minStep > 0m && decrementNow < minStep)
                 {
@@ -232,11 +239,12 @@ public class ElektronikEksiltmeCanliModel : PageModel
                 }
             }
 
-            // If requested to advance, validate min decrement and then advance
+            // If requested to advance, validate min decrement (per-round) and then advance
             if (requestNext)
             {
                 var minStep = Math.Max(0m, MinDecrementStep);
-                if (minStep > 0m && DecrementTotal < minStep)
+                var decrementNow = GetPerRoundDecrement();
+                if (minStep > 0m && decrementNow < minStep)
                 {
                     ModelState.AddModelError(string.Empty, $"Yapılan eksiltme asgari fark aralığından (en az {minStep:N2} ₺) daha düşük olamaz.");
                     return Page();
@@ -263,12 +271,26 @@ public class ElektronikEksiltmeCanliModel : PageModel
                 {
                     SubmittedBids = JsonSerializer.Deserialize<List<SubmittedBid>>(subJson2) ?? new List<SubmittedBid>();
                 }
+                // Sanitize cumulative decrement: non-negative and non-decreasing vs previous rounds
+                decimal cumulativeNow = Math.Max(0m, DecrementTotal);
+                var prevRounds = SubmittedBids
+                    .Where(x => x.Round < CurrentRound)
+                    .OrderBy(x => x.Round)
+                    .ToList();
+                if (prevRounds.Count > 0)
+                {
+                    var lastPrev = prevRounds.Last().Decrement;
+                    if (cumulativeNow < lastPrev)
+                    {
+                        cumulativeNow = lastPrev;
+                    }
+                }
                 SubmittedBids.RemoveAll(x => x.Round == CurrentRound);
                 SubmittedBids.Add(new SubmittedBid
                 {
                     Round = CurrentRound,
                     GrandTotal = GrandTotal,
-                    Decrement = DecrementTotal,
+                    Decrement = cumulativeNow,
                     Rank = CurrentRank
                 });
                 HttpContext.Session.SetString(GetSubmittedKey(), JsonSerializer.Serialize(SubmittedBids));
@@ -331,6 +353,7 @@ public class ElektronikEksiltmeCanliModel : PageModel
         public decimal Decrement { get; set; }
         public int Rank { get; set; }
     }
+
 }
 
 

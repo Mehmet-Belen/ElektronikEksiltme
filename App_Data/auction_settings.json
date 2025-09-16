@@ -1,6 +1,6 @@
 {
   "ExcludeTopBidderInNextRound": true,
   "AllowUnlimitedRounds": false,
-  "RoundCount": 4,
+  "RoundCount": 3,
   "MinDecrementStep": 0
 }
