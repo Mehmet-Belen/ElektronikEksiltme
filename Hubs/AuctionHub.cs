@@ -16,6 +16,36 @@ namespace WebApplication1.Hubs
         private static readonly ConcurrentDictionary<string, ConcurrentDictionary<int, byte>> SessionParticipants
             = new ConcurrentDictionary<string, ConcurrentDictionary<int, byte>>();
 
+        // key: ikn:round -> per-user latest bid snapshot
+        private static readonly ConcurrentDictionary<string, ConcurrentDictionary<int, BidSnapshot>> BidsByIknRound
+            = new ConcurrentDictionary<string, ConcurrentDictionary<int, BidSnapshot>>();
+
+        public class BidSnapshot
+        {
+            public int UserId { get; set; }
+            public string Username { get; set; } = string.Empty;
+            public int Round { get; set; }
+            public decimal GrandTotal { get; set; }
+            public decimal Decrement { get; set; }
+            public System.DateTime Timestamp { get; set; }
+        }
+
+        public static void RecordBidSnapshot(string ikn, int userId, string username, int round, decimal grandTotal, decimal decrement, System.DateTime timestampUtc)
+        {
+            if (string.IsNullOrWhiteSpace(ikn) || userId <= 0 || round <= 0) return;
+            var key = GroupName(ikn) + ":" + round.ToString();
+            var map = BidsByIknRound.GetOrAdd(key, _ => new ConcurrentDictionary<int, BidSnapshot>());
+            map[userId] = new BidSnapshot
+            {
+                UserId = userId,
+                Username = username ?? string.Empty,
+                Round = round,
+                GrandTotal = grandTotal,
+                Decrement = decrement,
+                Timestamp = timestampUtc
+            };
+        }
+
         public async Task Identify(int userId, string username)
         {
             ConnectionToUser[Context.ConnectionId] = (userId, username ?? string.Empty);
@@ -81,6 +111,21 @@ namespace WebApplication1.Hubs
         }
 
         public static string GroupName(string ikn) => $"EE:{ikn}";
+
+        public Task<BidSnapshot[]> GetRoundBids(string ikn, int round)
+        {
+            if (string.IsNullOrWhiteSpace(ikn) || round <= 0)
+            {
+                return Task.FromResult(System.Array.Empty<BidSnapshot>());
+            }
+            var key = GroupName(ikn) + ":" + round.ToString();
+            if (BidsByIknRound.TryGetValue(key, out var map))
+            {
+                var list = map.Values.OrderBy(b => b.GrandTotal).ThenBy(b => b.Timestamp).ToArray();
+                return Task.FromResult(list);
+            }
+            return Task.FromResult(System.Array.Empty<BidSnapshot>());
+        }
     }
 }
 

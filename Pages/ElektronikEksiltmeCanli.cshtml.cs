@@ -304,9 +304,11 @@ public class ElektronikEksiltmeCanliModel : PageModel
                 });
                 HttpContext.Session.SetString(GetSubmittedKey(), JsonSerializer.Serialize(SubmittedBids));
 
-                // Broadcast real-time event
+                // Persist bid snapshot for the round so sender also sees it immediately
                 var username = HttpContext.Session.GetString("Username") ?? string.Empty;
                 var userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+                WebApplication1.Hubs.AuctionHub.RecordBidSnapshot(IKN ?? string.Empty, userId, username, CurrentRound, GrandTotal, cumulativeNow, DateTime.UtcNow);
+                // Broadcast real-time event
                 await _hubContext.Clients.Group(AuctionHub.GroupName(IKN ?? string.Empty))
                     .SendAsync("BidSubmitted", new
                     {

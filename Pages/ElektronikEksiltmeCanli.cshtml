@@ -450,6 +450,12 @@
                                 <td>${new Date(r.timestamp).toLocaleTimeString('tr-TR')}</td>`;
                 liveBody.appendChild(tr);
             });
+            // Update rank badge based on leaderboard
+            const myUserId = Number('@Model.SessionUserId');
+            const myIdx = rows.findIndex(x => Number(x.userId) === myUserId);
+            const rank = myIdx >= 0 ? (myIdx + 1) : rows.length;
+            const rankEl = document.querySelector('.rank-number');
+            if (rankEl) rankEl.textContent = rank;
         }
         function startSessionConn() {
             if (!window.signalR || !window.signalR.HubConnectionBuilder) {
@@ -480,11 +486,20 @@
                 } catch { }
             });
 
-            connection.start().then(() => {
+            connection.start().then(async () => {
                 const username = '@sessUsername';
                 const userId = '@sessUserId';
                 connection.invoke('Identify', parseInt(userId || '0'), username || '');
-                connection.invoke('JoinSession', ikn);
+                await connection.invoke('JoinSession', ikn);
+                // Get existing bids for this round to populate table for sender, too
+                try {
+                    const existing = await connection.invoke('GetRoundBids', ikn, @Model.CurrentRound);
+                    if (Array.isArray(existing)) {
+                        bidsByRound[@Model.CurrentRound] = bidsByRound[@Model.CurrentRound] || {};
+                        existing.forEach(e => { bidsByRound[@Model.CurrentRound][e.userId || ('u_' + Math.random())] = e; });
+                        renderLeaderboard(@Model.CurrentRound);
+                    }
+                } catch { }
             }).catch(err => console.error(err));
         }
         startSessionConn();
